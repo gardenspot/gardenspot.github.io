@@ -374,7 +374,7 @@
             </div>
         </div>
         <div class="absolute bottom-10 text-gray-500 text-center">
-            <div class="text-xs font-bold mb-1">GardenSpot OS v1.16</div>
+            <div class="text-xs font-bold mb-1">GardenSpot OS v1.17</div>
             <div class="text-[10px] opacity-70 tracking-widest">By Pavlo</div>
         </div>
     </div>
@@ -534,13 +534,23 @@
         <!-- Fading Header -->
         <div class="player-header">
             <span class="text-gray-200 font-bold brand-font" id="playerTitle">Game</span>
-            <div class="flex gap-4">
-                <button onclick="toggleFullscreen()" class="text-gray-300 hover:text-white transition" title="Fullscreen">
+            <div class="flex gap-2">
+                <button onclick="toggleFullscreen()" class="text-gray-300 hover:text-white transition p-4 hover:bg-white/10 rounded-full" title="Fullscreen">
                     <i class="fas fa-expand fa-lg"></i>
                 </button>
-                <button onclick="closeGame()" class="text-red-500 hover:text-red-300 transition" title="Close">
+                <button onclick="closeGame()" class="text-red-500 hover:text-red-300 transition p-4 hover:bg-red-500/10 rounded-full" title="Close">
                     <i class="fas fa-times fa-lg"></i>
                 </button>
+            </div>
+        </div>
+        
+        <!-- Tutorial Overlay -->
+        <div id="player-tutorial" class="absolute inset-0 z-[70] bg-black/80 flex flex-col items-center justify-center text-center p-6 hidden">
+            <div class="bg-gray-900 border border-white/20 p-8 rounded-2xl max-w-md shadow-2xl flex flex-col items-center">
+                <i class="fas fa-arrow-up text-4xl text-blue-400 mb-4 animate-bounce"></i>
+                <h2 class="text-2xl font-bold text-white mb-2 brand-font">Heads Up!</h2>
+                <p class="text-gray-300 mb-6">The menu bar hides automatically to let you focus.</br>Hover your mouse at the <b>top of the screen</b> to show it again.</p>
+                <button onclick="closeTutorial()" class="bg-blue-600 hover:bg-blue-500 text-white px-8 py-2 rounded-full font-bold transition shadow-lg shadow-blue-900/50">Got it</button>
             </div>
         </div>
         
@@ -962,6 +972,11 @@
         // --- PLAYER ---
 
         function launchGame(title, url) {
+            // Tutorial check
+            if (!localStorage.getItem('gardenTutorialShown')) {
+                document.getElementById('player-tutorial').classList.remove('hidden');
+            }
+
             const player = document.getElementById('section-player');
             const frame = document.getElementById('gameFrame');
             const label = document.getElementById('playerTitle');
@@ -987,6 +1002,11 @@
             const playerSection = document.getElementById('section-player');
             if (!document.fullscreenElement) playerSection.requestFullscreen();
             else document.exitFullscreen();
+        }
+
+        function closeTutorial() {
+            document.getElementById('player-tutorial').classList.add('hidden');
+            localStorage.setItem('gardenTutorialShown', 'true');
         }
 
         // --- UNBLOCKER ---
