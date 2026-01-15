@@ -138,14 +138,43 @@
         }
         .menu-card span { font-weight: bold; letter-spacing: 1px; color: #fff; }
 
+        /* GAMES CONTAINER (Scroll Handling) */
+        .games-scroll-container {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding-bottom: 100px;
+        }
+
+        /* FAVORITES SECTION */
+        .favorites-section {
+            padding: 20px 30px 0 30px;
+        }
+        .section-title {
+            font-size: 0.8rem;
+            color: #9ca3af;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 15px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        /* SCROLLBAR HIDE UTILITY */
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
         /* GAME GRID */
         .game-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
             gap: 20px;
-            padding: 30px;
-            overflow-y: auto;
-            padding-bottom: 100px;
+            padding: 20px 30px;
         }
 
         .game-card {
@@ -163,13 +192,60 @@
             box-shadow: 0 0 15px var(--bg-glow);
             z-index: 10;
         }
+        
+        .fav-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            z-index: 20;
+            color: rgba(255,255,255,0.3);
+            transition: color 0.2s;
+            padding: 5px;
+        }
+        .fav-btn:hover, .fav-btn.active {
+            color: #ef4444; /* Red Heart */
+            text-shadow: 0 0 10px #ef4444;
+        }
 
-        /* PLAYER */
+        /* PLAYER & HOVER HEADER (Fixed Fade Effect) */
         .player-frame {
             flex-grow: 1;
             width: 100%;
+            height: 100%;
             background: #000;
             border: none;
+        }
+        
+        .player-header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 50px;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.9), transparent);
+            padding: 0 20px;
+            z-index: 60;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none; /* Click through when hidden */
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .player-trigger {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 30px;
+            z-index: 61;
+        }
+
+        .player-trigger:hover ~ .player-header,
+        .player-header:hover {
+            opacity: 1;
+            pointer-events: auto;
         }
 
         /* MODAL */
@@ -248,6 +324,22 @@
         <div class="wave wave2"></div>
     </div>
 
+    <!-- PANIC OVERLAY (Google Disguise) -->
+    <div id="panic-overlay" class="fixed inset-0 bg-white z-[9999] hidden flex flex-col items-center justify-center font-arial">
+        <div class="flex flex-col items-center w-full max-w-[600px]">
+            <img src="https://www.google.com/images/branding/googlelogo/1x/googlelogo_color_272x92dp.png" alt="Google" class="mb-8" width="272" height="92">
+            <div class="w-full flex items-center border border-gray-200 rounded-full px-4 py-3 hover:shadow-md transition">
+                <i class="fas fa-search text-gray-400 mr-3"></i>
+                <input type="text" class="w-full outline-none text-gray-700 text-lg" placeholder="Search Google or type a URL">
+                <img src="https://www.gstatic.com/images/branding/googlemic/2x/googlemic_color_24dp.png" class="h-6 ml-3 cursor-pointer">
+            </div>
+            <div class="mt-8 flex gap-4">
+                <button class="bg-gray-100 hover:bg-gray-200 text-sm text-gray-800 px-4 py-2 rounded">Google Search</button>
+                <button class="bg-gray-100 hover:bg-gray-200 text-sm text-gray-800 px-4 py-2 rounded">I'm Feeling Lucky</button>
+            </div>
+        </div>
+    </div>
+
     <!-- NAVBAR -->
     <div class="navbar">
         <div class="flex items-center gap-3 cursor-pointer" onclick="goHome()">
@@ -282,27 +374,53 @@
             </div>
         </div>
         <div class="absolute bottom-10 text-gray-500 text-center">
-            <div class="text-xs font-bold mb-1">GardenSpot OS v1.4</div>
+            <div class="text-xs font-bold mb-1">GardenSpot OS v1.16</div>
             <div class="text-[10px] opacity-70 tracking-widest">By Pavlo</div>
         </div>
     </div>
 
     <!-- 2. GAMES LIBRARY -->
     <div id="section-games" class="section">
-        <div class="px-8 py-4 flex justify-between items-center border-b border-white/10 bg-black/40">
+        <div class="px-8 py-4 flex flex-col md:flex-row justify-between items-center border-b border-white/10 bg-black/40 gap-4">
             <h2 class="text-2xl font-bold text-white brand-font">LIBRARY</h2>
-            <div class="flex gap-3">
+            <div class="flex gap-3 items-center flex-wrap justify-center">
+                <!-- Filter Dropdown -->
+                <div class="relative">
+                    <select id="gameFilter" onchange="renderGames()" class="bg-gray-900 border border-white/20 text-white text-xs rounded-lg px-3 py-1.5 focus:outline-none appearance-none pr-8 cursor-pointer hover:bg-gray-800 transition">
+                        <option class="bg-gray-900 text-white" value="az">A - Z</option>
+                        <option class="bg-gray-900 text-white" value="za">Z - A</option>
+                        <option class="bg-gray-900 text-white" value="newest">Newest</option>
+                        <option class="bg-gray-900 text-white" value="oldest">Oldest</option>
+                        <option class="bg-gray-900 text-white" value="popular">Popular</option>
+                    </select>
+                    <i class="fas fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none"></i>
+                </div>
+
                 <input type="text" id="searchInput" placeholder="Search..." 
-                    class="bg-white/10 border border-white/20 rounded-full px-4 py-1 text-white focus:outline-none w-48"
+                    class="bg-white/10 border border-white/20 rounded-full px-4 py-1 text-white focus:outline-none w-40 text-sm"
                     style="border-color: var(--neon-color)">
-                <button onclick="openAddModal()" class="text-white px-4 py-1 rounded-full font-bold transition"
+                
+                <button onclick="openAddModal()" class="text-white px-4 py-1 rounded-full font-bold transition text-sm flex items-center gap-2"
                     style="background-color: var(--neon-color); box-shadow: 0 0 10px var(--bg-glow)">
                     <i class="fas fa-plus"></i> ADD
                 </button>
             </div>
         </div>
-        <div id="gameGrid" class="game-grid">
-            <!-- Games injected here -->
+
+        <!-- SCROLLABLE CONTENT WRAPPER -->
+        <div class="games-scroll-container">
+            <!-- Favorites Section (Hidden by default, shows if favorites exist) -->
+            <div id="favoritesSection" class="favorites-section hidden">
+                <div class="section-title">Favorites</div>
+                <div id="favoritesGrid" class="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
+                    <!-- Favorites injected here -->
+                </div>
+            </div>
+
+            <!-- Main Grid -->
+            <div id="gameGrid" class="game-grid">
+                <!-- Games injected here -->
+            </div>
         </div>
     </div>
 
@@ -352,26 +470,50 @@
 
     <!-- 5. SETTINGS -->
     <div id="section-settings" class="section items-center justify-center">
-        <div class="bg-black/60 p-8 rounded-2xl border border-white/10 w-full max-w-md">
+        <div class="bg-black/60 p-8 rounded-2xl border border-white/10 w-full max-w-md h-[80vh] overflow-y-auto custom-scrollbar">
             <h2 class="text-2xl text-white font-bold mb-6 border-b border-white/10 pb-2 flex justify-between items-center">
                 Settings
-                <span class="text-xs bg-yellow-600 text-white px-2 py-1 rounded font-mono">WIP</span>
             </h2>
+            
+            <!-- Clock Settings -->
+            <div class="mb-4 flex justify-between items-center bg-black/30 p-3 rounded-lg border border-white/5">
+                <span class="text-gray-300 font-bold text-xs uppercase tracking-wider">24-Hour Clock</span>
+                <label class="switch">
+                    <input type="checkbox" id="clockToggle" onchange="toggleClockFormat()">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <!-- Panic Button Settings -->
+            <div class="mb-6 bg-black/30 p-3 rounded-lg border border-white/5">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-gray-300 font-bold text-xs uppercase tracking-wider">Panic Key</span>
+                    <span id="currentPanicKey" class="text-xs font-mono bg-white/10 px-2 py-1 rounded text-white border border-white/10">~</span>
+                </div>
+                <button onclick="startKeyBinding()" id="bindKeyBtn" class="w-full py-2 border border-white/20 text-gray-300 text-xs rounded hover:bg-white/5 transition uppercase font-bold">Change Key</button>
+            </div>
             
             <!-- Theme -->
             <div class="mb-6">
                 <p class="text-gray-300 mb-4 font-bold text-xs uppercase tracking-wider">Theme Color</p>
-                <div class="flex gap-4 justify-center">
-                    <div class="theme-btn bg-emerald-500 shadow-lg shadow-emerald-500/50" onclick="setTheme('#10b981')"></div>
-                    <div class="theme-btn bg-blue-500 shadow-lg shadow-blue-500/50" onclick="setTheme('#3b82f6')"></div>
-                    <div class="theme-btn bg-purple-500 shadow-lg shadow-purple-500/50" onclick="setTheme('#a855f7')"></div>
-                    <div class="theme-btn bg-red-500 shadow-lg shadow-red-500/50" onclick="setTheme('#ef4444')"></div>
-                    <div class="theme-btn bg-yellow-500 shadow-lg shadow-yellow-500/50" onclick="setTheme('#eab308')"></div>
+                <div class="flex flex-col gap-4">
+                    <div class="flex gap-4 justify-center">
+                        <div class="theme-btn bg-emerald-500 shadow-lg shadow-emerald-500/50" onclick="setTheme('#10b981')"></div>
+                        <div class="theme-btn bg-blue-500 shadow-lg shadow-blue-500/50" onclick="setTheme('#3b82f6')"></div>
+                        <div class="theme-btn bg-purple-500 shadow-lg shadow-purple-500/50" onclick="setTheme('#a855f7')"></div>
+                        <div class="theme-btn bg-red-500 shadow-lg shadow-red-500/50" onclick="setTheme('#ef4444')"></div>
+                        <div class="theme-btn bg-yellow-500 shadow-lg shadow-yellow-500/50" onclick="setTheme('#eab308')"></div>
+                    </div>
+                    <!-- Custom Color Picker -->
+                    <div class="flex items-center gap-3 bg-black/40 p-2 rounded border border-white/10">
+                        <input type="color" id="customColorPicker" class="w-8 h-8 rounded cursor-pointer border-none bg-transparent p-0" oninput="setTheme(this.value)">
+                        <span class="text-xs text-gray-400">Custom Color</span>
+                    </div>
                 </div>
             </div>
 
             <!-- Particles Toggle -->
-            <div class="mb-8 flex justify-between items-center bg-black/30 p-3 rounded-lg">
+            <div class="mb-8 flex justify-between items-center bg-black/30 p-3 rounded-lg border border-white/5">
                 <span class="text-gray-300 font-bold text-xs uppercase tracking-wider">Moving Particles</span>
                 <label class="switch">
                     <input type="checkbox" id="particleToggle" checked onchange="toggleParticles()">
@@ -379,24 +521,30 @@
                 </label>
             </div>
 
-            <button onclick="localStorage.clear(); location.reload()" class="w-full py-2 bg-red-900/50 text-red-200 rounded hover:bg-red-800/50 mb-3 text-sm font-bold">RESET ALL DATA</button>
-            <button onclick="goHome()" class="w-full py-2 border border-gray-600 text-white rounded hover:bg-white/10 text-sm">Back</button>
+            <button onclick="openResetModal()" class="w-full py-2 bg-red-900/50 text-red-200 rounded hover:bg-red-800/50 mb-3 text-sm font-bold transition hover:scale-105 active:scale-95 border border-red-900">RESET ALL DATA</button>
+            <button onclick="goHome()" class="w-full py-2 border border-gray-600 text-white rounded hover:bg-white/10 text-sm transition">Back</button>
         </div>
     </div>
 
-    <!-- 6. PLAYER (Fullscreen) -->
-    <div id="section-player" class="section bg-black fixed inset-0 z-[100] hidden flex-col">
-        <div class="h-10 bg-black flex justify-between items-center px-4 border-b border-white/10">
-            <span class="text-gray-400 font-bold brand-font" id="playerTitle">Game</span>
+    <!-- 6. PLAYER (Fullscreen with Fade Menu) -->
+    <div id="section-player" class="section bg-black fixed inset-0 z-[100] hidden pt-0">
+        <!-- Invisible Trigger Zone -->
+        <div class="player-trigger"></div>
+        
+        <!-- Fading Header -->
+        <div class="player-header">
+            <span class="text-gray-200 font-bold brand-font" id="playerTitle">Game</span>
             <div class="flex gap-4">
-                <button onclick="toggleFullscreen()" class="text-gray-400 hover:text-white" title="Fullscreen">
+                <button onclick="toggleFullscreen()" class="text-gray-300 hover:text-white transition" title="Fullscreen">
                     <i class="fas fa-expand fa-lg"></i>
                 </button>
-                <button onclick="closeGame()" class="text-red-500 hover:text-red-400" title="Close">
+                <button onclick="closeGame()" class="text-red-500 hover:text-red-300 transition" title="Close">
                     <i class="fas fa-times fa-lg"></i>
                 </button>
             </div>
         </div>
+        
+        <!-- Iframe -->
         <iframe id="gameFrame" class="player-frame" src="about:blank" allowfullscreen></iframe>
     </div>
 
@@ -413,9 +561,27 @@
         </div>
     </div>
 
+    <!-- RESET CONFIRMATION MODAL -->
+    <div id="resetModal" class="modal">
+        <div class="bg-gray-900 border border-red-600/50 p-6 rounded-xl w-full max-w-md shadow-2xl text-center">
+            <div class="flex justify-center mb-4">
+                <div class="w-16 h-16 bg-red-900/30 rounded-full flex items-center justify-center border border-red-500/50">
+                    <i class="fas fa-exclamation-triangle text-3xl text-red-500"></i>
+                </div>
+            </div>
+            <h2 class="text-xl text-white font-bold mb-2 brand-font">Are you sure?</h2>
+            <p class="text-gray-400 text-sm mb-6">
+                This will delete all saved games, favorites, and theme settings. This action cannot be undone.
+            </p>
+            <div class="flex justify-center gap-3">
+                <button onclick="closeResetModal()" class="px-4 py-2 text-gray-300 hover:text-white rounded border border-gray-600 hover:bg-gray-800 transition">Cancel</button>
+                <button onclick="performReset()" class="px-6 py-2 bg-red-600 hover:bg-red-500 text-white font-bold rounded shadow-lg shadow-red-900/50 transition transform hover:scale-105">Yes, Reset Everything</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // --- DATA ---
-        // RESTORED v1.3/bi6zone LINKS
         const initialGames = [
             { title: "Subway Surfers", url: "https://bi6zone.vercel.app/g/subwaysurfers/original.html" },
             { title: "Minecraft", url: "https://bi6zone.vercel.app/g/minecraft.html" },
@@ -453,11 +619,53 @@
             { title: "Poly Track", url: "https://bi6zone.vercel.app/g/poly-track.html" },
             { title: "CS 1.6", url: "https://bi6zone.vercel.app/g/cs16.html" },
             { title: "Tiny Fishing", url: "https://bi6zone.vercel.app/g/tiny-fishing.html" },
-            { title: "Eggy Car", url: "https://bi6zone.vercel.app/g/eggy-car.html" }
+            { title: "Eggy Car", url: "https://bi6zone.vercel.app/g/eggy-car.html" },
+            
+            // Newly Added Games
+            { title: "Super Hot", url: "https://bi6zone.vercel.app/g/super-hot.html" },
+            { title: "Cluster Rush", url: "https://bi6zone.vercel.app/g/cluster-rush.html" },
+            { title: "TABS", url: "https://bi6zone.vercel.app/g/tabs.html" },
+            { title: "Aquapark.io", url: "https://bi6zone.vercel.app/g/aquapark-io.html" },
+            { title: "Cookie Clicker", url: "https://bi6zone.vercel.app/g/cookie-clicker.html" },
+            { title: "Happy Wheels", url: "https://bi6zone.vercel.app/g/happy-wheels.html" },
+            { title: "Infinite Craft", url: "https://bi6zone.vercel.app/g/infinite-craft.html" },
+            { title: "Papa's Burgeria", url: "https://bi6zone.vercel.app/g/papas-burgeria.html" },
+            { title: "Papa's Freezeria", url: "https://bi6zone.vercel.app/g/papas-freezeria.html" },
+            { title: "Papa's Pizzeria", url: "https://bi6zone.vercel.app/g/papas-pizzeria.html" },
+            { title: "BitLife", url: "https://bi6zone.vercel.app/g/bitlife.html" },
+            { title: "Tetris", url: "https://bi6zone.vercel.app/g/tetris.html" },
+            { title: "Chrome Dino", url: "https://bi6zone.vercel.app/g/chrome-dino.html" },
+            { title: "WHG", url: "https://bi6zone.vercel.app/g/whg.html" },
+            { title: "WHG 2", url: "https://bi6zone.vercel.app/g/whg2.html" },
+            { title: "WHG 3", url: "https://bi6zone.vercel.app/g/whg3.html" },
+            { title: "Uno", url: "https://bi6zone.vercel.app/g/uno.html" },
+            { title: "Plinko Infinite", url: "https://bi6zone.vercel.app/g/plinkoinfinite.html" },
+            { title: "Bloons TD", url: "https://bi6zone.vercel.app/g/btd.html" },
+            { title: "Bloons TD 2", url: "https://bi6zone.vercel.app/g/btd2.html" },
+            { title: "Bloons TD 3", url: "https://bi6zone.vercel.app/g/btd3.html" },
+            { title: "Bloons TD 4", url: "https://bi6zone.vercel.app/g/bloonstd4.html" },
+            { title: "Bloons TD 5", url: "https://bi6zone.vercel.app/g/bloonstd5.html" },
+            { title: "Only Up", url: "https://bi6zone.vercel.app/g/only-up.html" },
+            { title: "Repo", url: "https://bi6zone.vercel.app/g/repo.html" },
+            { title: "Spacewaves", url: "https://bi6zone.vercel.app/g/spacewaves.html" },
+            { title: "Gmod", url: "https://bi6zone.vercel.app/g/gmod.html" },
+            { title: "Angry Birds", url: "https://bi6zone.vercel.app/g/angrybirds-chrome.html" },
+            { title: "Steal A Brainrot", url: "https://bi6zone.vercel.app/g/steal-a-brainrot.html" },
+            { title: "Fortzone", url: "https://bi6zone.vercel.app/g/fortzone.html" },
+            { title: "Football Bros", url: "https://bi6zone.vercel.app/g/football-bros.html" },
+            { title: "Kart Bros", url: "https://bi6zone.vercel.app/g/kart-bros.html" },
+            { title: "Guess Their Answer", url: "https://bi6zone.vercel.app/g/guess-their-answer.html" }
         ];
 
+        // Popular games list for filtering
+        const popularGames = ["Minecraft", "Subway Surfers", "Geometry Dash", "BitLife", "Slope", "Happy Wheels", "Bloons TD 5", "Cookie Clicker", "Among Us", "1v1.lol", "Retro Bowl"];
+
         let games = [];
+        let favorites = [];
         let particlesEnabled = true;
+        let is24Hour = false;
+        let panicKey = 'Backquote'; // Default to ~
+        let isBindingKey = false;
         let animationFrameId;
 
         // --- CORE FUNCTIONS ---
@@ -467,13 +675,27 @@
             const theme = localStorage.getItem('gardenTheme');
             if(theme) setTheme(theme);
 
-            // Load particles setting
+            // Load particles
             const particlesSetting = localStorage.getItem('gardenParticles');
             if (particlesSetting !== null) {
                 particlesEnabled = particlesSetting === 'true';
                 document.getElementById('particleToggle').checked = particlesEnabled;
             }
             if (particlesEnabled) initParticles();
+
+            // Load Clock Setting
+            is24Hour = localStorage.getItem('garden24Hour') === 'true';
+            document.getElementById('clockToggle').checked = is24Hour;
+
+            // Load Panic Key
+            const savedPanicKey = localStorage.getItem('gardenPanicKey');
+            if(savedPanicKey) {
+                panicKey = savedPanicKey;
+                document.getElementById('currentPanicKey').innerText = formatKeyName(panicKey);
+            }
+
+            // Load Favorites
+            favorites = JSON.parse(localStorage.getItem('gardenFavorites') || '[]');
 
             // Load games
             const saved = JSON.parse(localStorage.getItem('gardenGames') || '[]');
@@ -483,12 +705,176 @@
             games = Array.from(map.values());
 
             renderGames();
+            renderFavoritesSection();
             
             // Clock
             setInterval(() => {
                 const d = new Date();
-                document.getElementById('clock').innerText = d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+                const options = { hour: '2-digit', minute: '2-digit', hour12: !is24Hour };
+                const timeStr = d.toLocaleTimeString([], options);
+                document.getElementById('clock').innerText = timeStr;
             }, 1000);
+
+            // Global Panic Key Listener (Toggle)
+            document.addEventListener('keydown', (e) => {
+                if (isBindingKey) return; 
+                if (e.code === panicKey) {
+                    e.preventDefault();
+                    const panicScreen = document.getElementById('panic-overlay');
+                    panicScreen.classList.toggle('hidden');
+                }
+            });
+        }
+
+        // --- SETTINGS LOGIC ---
+        function toggleClockFormat() {
+            is24Hour = document.getElementById('clockToggle').checked;
+            localStorage.setItem('garden24Hour', is24Hour);
+            // Force immediate update
+            const d = new Date();
+            const options = { hour: '2-digit', minute: '2-digit', hour12: !is24Hour };
+            document.getElementById('clock').innerText = d.toLocaleTimeString([], options);
+        }
+
+        function startKeyBinding() {
+            const btn = document.getElementById('bindKeyBtn');
+            const display = document.getElementById('currentPanicKey');
+            
+            isBindingKey = true;
+            btn.innerText = "PRESS ANY KEY...";
+            btn.classList.add('bg-blue-600', 'text-white');
+            
+            const bindListener = (e) => {
+                e.preventDefault();
+                panicKey = e.code;
+                localStorage.setItem('gardenPanicKey', panicKey);
+                
+                display.innerText = formatKeyName(panicKey);
+                btn.innerText = "CHANGE KEY";
+                btn.classList.remove('bg-blue-600', 'text-white');
+                
+                isBindingKey = false;
+                document.removeEventListener('keydown', bindListener);
+            };
+            
+            document.addEventListener('keydown', bindListener);
+        }
+
+        function formatKeyName(code) {
+            if (code === 'Backquote') return '~';
+            if (code.startsWith('Key')) return code.replace('Key', '');
+            if (code.startsWith('Digit')) return code.replace('Digit', '');
+            return code;
+        }
+
+        // --- FILTER & SORT LOGIC ---
+        function getSortedGames() {
+            const filter = document.getElementById('gameFilter').value;
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            
+            // 1. Filter by Search
+            let filtered = games.filter(g => g.title.toLowerCase().includes(search));
+
+            // 2. Sort Logic
+            if (filter === 'az') {
+                filtered.sort((a, b) => a.title.localeCompare(b.title));
+            } else if (filter === 'za') {
+                filtered.sort((a, b) => b.title.localeCompare(a.title));
+            } else if (filter === 'newest') {
+                filtered.reverse(); // Assuming array order is oldest -> newest
+            } else if (filter === 'oldest') {
+                // Default order
+            } else if (filter === 'popular') {
+                filtered.sort((a, b) => {
+                    const isAPop = popularGames.includes(a.title);
+                    const isBPop = popularGames.includes(b.title);
+                    return (isAPop === isBPop) ? 0 : isAPop ? -1 : 1;
+                });
+            }
+
+            return filtered;
+        }
+
+        // --- RENDERERS ---
+        function renderGames() {
+            const grid = document.getElementById('gameGrid');
+            grid.innerHTML = "";
+            const list = getSortedGames();
+            
+            list.forEach(g => {
+                const el = document.createElement('div');
+                el.className = 'game-card h-40 group';
+                
+                // Click handler wrapper to ignore clicks on heart
+                el.onclick = (e) => {
+                    if (!e.target.closest('.fav-btn')) launchGame(g.title, g.url);
+                };
+                
+                const bgColors = ['#1a202c', '#2d3748', '#4a5568', '#1c4532', '#1e3a8a'];
+                const bg = bgColors[Math.floor(Math.random() * bgColors.length)];
+                
+                const isFav = favorites.includes(g.title);
+                const heartClass = isFav ? 'active' : '';
+
+                el.innerHTML = `
+                    <div class="fav-btn ${heartClass}" data-title="${g.title}" onclick="toggleFavorite(this.dataset.title)">
+                        <i class="fas fa-heart"></i>
+                    </div>
+                    <div class="h-28 w-full flex items-center justify-center relative" style="background:${bg}">
+                        <span class="text-3xl font-bold text-white/20 select-none">${g.title.substring(0,2).toUpperCase()}</span>
+                        <div class="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition"></div>
+                    </div>
+                    <div class="p-3 bg-gray-900 h-12 flex items-center">
+                        <h3 class="text-gray-200 text-sm font-bold truncate w-full group-hover:text-white transition">${g.title}</h3>
+                    </div>
+                `;
+                grid.appendChild(el);
+            });
+        }
+
+        function renderFavoritesSection() {
+            const section = document.getElementById('favoritesSection');
+            const grid = document.getElementById('favoritesGrid');
+            
+            if (favorites.length === 0) {
+                section.classList.add('hidden');
+                return;
+            }
+            
+            section.classList.remove('hidden');
+            grid.innerHTML = "";
+            
+            favorites.forEach(title => {
+                const g = games.find(game => game.title === title);
+                if(!g) return;
+
+                const el = document.createElement('div');
+                el.className = 'game-card w-40 flex-shrink-0 group relative cursor-pointer h-32';
+                el.onclick = () => launchGame(g.title, g.url);
+                
+                const bg = '#111827'; 
+
+                el.innerHTML = `
+                    <div class="h-20 w-full flex items-center justify-center relative" style="background:${bg}">
+                        <span class="text-2xl font-bold text-white/20 select-none">${g.title.substring(0,2).toUpperCase()}</span>
+                    </div>
+                    <div class="p-2 bg-gray-900 h-12 flex items-center">
+                        <h3 class="text-gray-200 text-xs font-bold truncate w-full">${g.title}</h3>
+                    </div>
+                `;
+                grid.appendChild(el);
+            });
+        }
+
+        // --- FEATURES ---
+        function toggleFavorite(title) {
+            const idx = favorites.indexOf(title);
+            if (idx > -1) favorites.splice(idx, 1);
+            else favorites.push(title);
+            
+            localStorage.setItem('gardenFavorites', JSON.stringify(favorites));
+            renderGames();
+            renderFavoritesSection();
         }
 
         // --- PARTICLES ENGINE ---
@@ -508,10 +894,10 @@
                 constructor() {
                     this.x = Math.random() * canvas.width;
                     this.y = Math.random() * canvas.height;
-                    this.size = Math.random() * 2;
+                    this.size = Math.random() * 2 + 0.5;
                     this.speedX = Math.random() * 0.5 - 0.25;
                     this.speedY = Math.random() * 0.5 - 0.25;
-                    this.opacity = Math.random() * 0.5 + 0.1;
+                    this.opacity = Math.random() * 0.5 + 0.2;
                 }
                 update() {
                     this.x += this.speedX;
@@ -529,7 +915,7 @@
                 }
             }
 
-            for (let i = 0; i < 100; i++) particles.push(new Particle());
+            for (let i = 0; i < 80; i++) particles.push(new Particle());
 
             function animate() {
                 if (!particlesEnabled) {
@@ -559,31 +945,6 @@
                 const ctx = canvas.getContext('2d');
                 ctx.clearRect(0,0, canvas.width, canvas.height);
             }
-        }
-
-        function renderGames(filter = "") {
-            const grid = document.getElementById('gameGrid');
-            grid.innerHTML = "";
-            
-            games.filter(g => g.title.toLowerCase().includes(filter.toLowerCase())).forEach(g => {
-                const el = document.createElement('div');
-                el.className = 'game-card h-40 group';
-                el.onclick = () => launchGame(g.title, g.url);
-                
-                const bgColors = ['#1a202c', '#2d3748', '#4a5568', '#1c4532', '#1e3a8a'];
-                const bg = bgColors[Math.floor(Math.random() * bgColors.length)];
-
-                el.innerHTML = `
-                    <div class="h-28 w-full flex items-center justify-center relative" style="background:${bg}">
-                        <span class="text-3xl font-bold text-white/20 select-none">${g.title.substring(0,2).toUpperCase()}</span>
-                        <div class="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition"></div>
-                    </div>
-                    <div class="p-3 bg-gray-900 h-12 flex items-center">
-                        <h3 class="text-gray-200 text-sm font-bold truncate w-full group-hover:text-white transition">${g.title}</h3>
-                    </div>
-                `;
-                grid.appendChild(el);
-            });
         }
 
         // --- NAVIGATION ---
@@ -674,7 +1035,19 @@
             }
         }
 
-        document.getElementById('searchInput').addEventListener('input', (e) => renderGames(e.target.value));
+        // --- RESET LOGIC ---
+        function openResetModal() {
+            document.getElementById('resetModal').classList.add('open');
+        }
+        function closeResetModal() {
+            document.getElementById('resetModal').classList.remove('open');
+        }
+        function performReset() {
+            localStorage.clear();
+            location.reload();
+        }
+
+        document.getElementById('searchInput').addEventListener('input', (e) => renderGames());
 
         init();
 
