@@ -448,7 +448,7 @@
             </div>
         </div>
         <div class="absolute bottom-10 text-gray-500 text-center">
-            <div class="text-xs font-bold mb-1">GardenSpot OS v1.44</div>
+            <div class="text-xs font-bold mb-1">GardenSpot OS v1.45</div>
             <div class="text-[10px] opacity-70 tracking-widest">By Pavlo</div>
         </div>
     </div>
@@ -585,6 +585,14 @@
                     <input type="checkbox" id="clockToggle" onchange="toggleClockFormat()">
                     <span class="slider"></span>
                 </label>
+            </div>
+
+            <!-- Fullscreen Mode -->
+            <div class="mb-4 flex justify-between items-center bg-black/30 p-3 rounded-lg border border-white/5">
+                <span class="text-gray-300 font-bold text-xs uppercase tracking-wider">Fullscreen Mode</span>
+                <button onclick="toggleGlobalFullscreen()" class="text-white hover:text-blue-400 transition" title="Toggle Fullscreen">
+                    <i class="fas fa-expand text-xl"></i>
+                </button>
             </div>
 
             <!-- Splash Text Settings -->
@@ -1204,6 +1212,8 @@
             if(!currentUser) return;
             const today = new Date().toDateString();
             const btn = document.getElementById('dailyRewardBtn');
+            // Safe check for button existence (fixes potential bug)
+            if(!btn) return;
             
             if (currentUser.lastLoginDate !== today) {
                 btn.disabled = false;
@@ -1459,6 +1469,17 @@
             document.head.appendChild(link);
         }
 
+        // --- FULLSCREEN TOGGLE ---
+        function toggleGlobalFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(e => console.log(e));
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+            }
+        }
+
         // --- CUSTOM CURSOR ---
         function setCursor(cursorClass) {
             document.body.className = document.body.className.replace(/cursor-\w+/g, "").trim();
@@ -1481,6 +1502,35 @@
                 localStorage.setItem('gardenNotes', textarea.value);
                 status.innerText = "Saved";
                 setTimeout(() => status.innerText = "", 1000);
+            });
+        }
+
+        // --- SYSTEM SPECS ---
+        function loadSystemSpecs() {
+            const grid = document.getElementById('specsGrid');
+            grid.innerHTML = "";
+            
+            const specs = [
+                { label: "OS / Platform", value: navigator.platform },
+                { label: "Browser Engine", value: navigator.userAgent.split(') ')[0] + ')' },
+                { label: "Screen Resolution", value: `${window.screen.width} x ${window.screen.height}` },
+                { label: "Window Size", value: `${window.innerWidth} x ${window.innerHeight}` },
+                { label: "Cores (Threads)", value: navigator.hardwareConcurrency || "Unknown" },
+                { label: "Memory (RAM)", value: navigator.deviceMemory ? `~${navigator.deviceMemory} GB` : "Unknown" },
+                { label: "Language", value: navigator.language },
+                { label: "Online Status", value: navigator.onLine ? "Online" : "Offline" },
+                { label: "Touch Support", value: 'ontouchstart' in window ? "Yes" : "No" },
+                { label: "Timezone", value: Intl.DateTimeFormat().resolvedOptions().timeZone }
+            ];
+
+            specs.forEach(s => {
+                const item = document.createElement('div');
+                item.className = "bg-black/30 p-3 rounded border border-white/5 flex flex-col";
+                item.innerHTML = `
+                    <span class="text-gray-400 text-xs uppercase tracking-wider mb-1">${s.label}</span>
+                    <span class="text-white font-bold truncate" title="${s.value}">${s.value}</span>
+                `;
+                grid.appendChild(item);
             });
         }
 
@@ -1586,7 +1636,7 @@
                 "Dragons", "Fight on State", "Hail to Pitt", "Fly the L", "Roll Tech", "Go Birds", 
                 "Bleed Green", "Kelly Green", "Midnight Green", "Silver and Black", "Orange and Black", 
                 "Red and Blue", "Blue and Gold", "Cherry and White", "Navy and White", "Maroon and Gold",
-                "Alex was here", "Jackson was here", "Pavlo was here", "v1.44 is goated",
+                "Alex was here", "Jackson was here", "Pavlo was here", "v1.45 is goated",
                 "Should I add sticky notes?", "Any other ideas? tell me in the \"request app\"",
                 "What games should I add?"
             ];
