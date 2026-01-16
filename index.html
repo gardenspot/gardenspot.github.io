@@ -4,10 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GARDENSPOT</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400;700&family=Indie+Flower&display=swap');
 
         :root {
             --glass: rgba(20, 20, 20, 0.6);
@@ -28,7 +29,27 @@
 
         .brand-font { font-family: 'Orbitron', sans-serif; }
 
+        /* CURSOR STYLES */
+        body.cursor-crosshair { cursor: crosshair; }
+        body.cursor-text { cursor: text; }
+        body.cursor-move { cursor: move; }
+        body.cursor-help { cursor: help; }
+        body.cursor-pointer { cursor: pointer; }
+
         /* LAYERS */
+        #custom-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -3;
+            background-size: cover;
+            background-position: center;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
         #particle-canvas {
             position: fixed;
             top: 0;
@@ -67,6 +88,21 @@
             0% { transform: translateX(0) scaleY(1); }
             50% { transform: translateX(-25%) scaleY(0.9); }
             100% { transform: translateX(-50%) scaleY(1); }
+        }
+
+        /* CUSTOM TEXT FADE IN */
+        @keyframes textFadeIn {
+            0% { opacity: 0; transform: translate(-50%, -10px); }
+            100% { opacity: 1; transform: translate(-50%, 0); }
+        }
+
+        /* RAINBOW ANIMATION (Konami) */
+        @keyframes rainbow {
+            0% { filter: hue-rotate(0deg); }
+            100% { filter: hue-rotate(360deg); }
+        }
+        .rainbow-mode {
+            animation: rainbow 5s linear infinite;
         }
 
         /* SECTIONS */
@@ -233,6 +269,7 @@
             justify-content: space-between;
         }
 
+        /* Invisible Trigger Zone */
         .player-trigger {
             position: absolute;
             top: 0;
@@ -242,6 +279,7 @@
             z-index: 61;
         }
 
+        /* Logic: Hovering trigger OR header keeps header visible */
         .player-trigger:hover ~ .player-header,
         .player-header:hover {
             opacity: 1;
@@ -311,9 +349,31 @@
         input:checked + .slider { background-color: var(--neon-color); }
         input:checked + .slider:before { transform: translateX(26px); }
 
+        /* CALENDAR */
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+            text-align: center;
+            font-size: 0.8rem;
+        }
+        .calendar-day {
+            padding: 5px;
+            border-radius: 5px;
+            background: rgba(255,255,255,0.05);
+        }
+        .calendar-today {
+            background: var(--neon-color);
+            color: black;
+            font-weight: bold;
+        }
+
     </style>
 </head>
 <body>
+
+    <!-- CUSTOM WALLPAPER LAYER -->
+    <div id="custom-bg"></div>
 
     <!-- PARTICLES -->
     <canvas id="particle-canvas"></canvas>
@@ -342,11 +402,21 @@
 
     <!-- NAVBAR -->
     <div class="navbar">
-        <div class="flex items-center gap-3 cursor-pointer" onclick="goHome()">
+        <div class="flex items-center gap-3 cursor-pointer pt-2" onclick="goHome()">
             <i class="fas fa-leaf text-2xl" style="color: var(--neon-color)"></i>
             <span class="text-xl font-bold brand-font text-white tracking-widest">GARDEN<span class="glow-text">SPOT</span></span>
         </div>
-        <div class="text-gray-400 text-sm font-mono" id="clock">12:00</div>
+        
+        <!-- SPLASH TEXT (Centered in Navbar) -->
+        <div id="splash-text" class="absolute left-1/2 transform -translate-x-1/2 text-gray-400 font-mono text-xs md:text-sm text-center px-4 select-none whitespace-nowrap overflow-hidden text-ellipsis max-w-[40%] hidden md:block opacity-0 hover:text-white transition-colors" style="animation: textFadeIn 2s ease-out forwards; text-shadow: 0 0 5px var(--neon-color);" title="Double-click to edit">
+            Loading...
+        </div>
+
+        <div class="flex items-center gap-4 text-gray-400 text-sm font-mono">
+            <div id="wifi-icon"><i class="fas fa-wifi"></i></div>
+            <div id="battery-level" class="flex items-center gap-1 hidden"><i class="fas fa-battery-full"></i> <span>100%</span></div>
+            <div id="clock">12:00</div>
+        </div>
     </div>
 
     <!-- 1. HOME SECTION -->
@@ -368,13 +438,17 @@
                 <i class="fas fa-globe"></i>
                 <span>UNBLOCKER</span>
             </div>
+            <div class="menu-card" onclick="navTo('account')">
+                <i class="fas fa-user-circle"></i>
+                <span>ACCOUNT</span>
+            </div>
             <div class="menu-card" onclick="navTo('settings')">
                 <i class="fas fa-cog"></i>
                 <span>SETTINGS</span>
             </div>
         </div>
         <div class="absolute bottom-10 text-gray-500 text-center">
-            <div class="text-xs font-bold mb-1">GardenSpot OS v1.17</div>
+            <div class="text-xs font-bold mb-1">GardenSpot OS v1.44</div>
             <div class="text-[10px] opacity-70 tracking-widest">By Pavlo</div>
         </div>
     </div>
@@ -409,7 +483,7 @@
 
         <!-- SCROLLABLE CONTENT WRAPPER -->
         <div class="games-scroll-container">
-            <!-- Favorites Section (Hidden by default, shows if favorites exist) -->
+            <!-- Favorites Section -->
             <div id="favoritesSection" class="favorites-section hidden">
                 <div class="section-title">Favorites</div>
                 <div id="favoritesGrid" class="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
@@ -424,18 +498,47 @@
         </div>
     </div>
 
-    <!-- 3. APPS (REQUEST GAMES FORM) -->
-    <div id="section-apps" class="section items-center justify-center">
-        <div class="bg-black/60 p-4 rounded-2xl border border-white/10 w-full max-w-4xl h-[85vh] flex flex-col relative">
-            <div class="flex justify-between items-center mb-4 px-2">
+    <!-- 3. APPS LIBRARY -->
+    <div id="section-apps" class="section">
+        <div class="px-8 py-4 flex justify-between items-center border-b border-white/10 bg-black/40 gap-4">
+            <h2 class="text-2xl font-bold text-white brand-font">APPS</h2>
+            <button onclick="goHome()" class="text-gray-400 hover:text-white px-3 py-1 rounded border border-gray-600 hover:bg-white/10 transition text-sm">Back</button>
+        </div>
+        
+        <div id="appsGrid" class="game-grid">
+            <!-- Apps injected here via JS -->
+        </div>
+    </div>
+
+    <!-- 3.1 NOTEPAD SECTION -->
+    <div id="section-notepad" class="section items-center justify-center">
+        <div class="bg-black/60 p-6 rounded-2xl border border-white/10 w-full max-w-4xl h-[85vh] flex flex-col relative">
+            <div class="flex justify-between items-center mb-4">
                 <div class="flex items-center gap-3">
-                    <i class="fas fa-cubes text-xl" style="color: var(--neon-color)"></i>
-                    <h2 class="text-2xl text-white font-bold brand-font">Request Games</h2>
+                    <i class="fas fa-sticky-note text-xl" style="color: var(--neon-color)"></i>
+                    <h2 class="text-2xl text-white font-bold brand-font">Notepad</h2>
                 </div>
-                <button onclick="goHome()" class="text-gray-400 hover:text-white px-3 py-1 rounded border border-gray-600 hover:bg-white/10 transition">Back</button>
+                <div class="flex gap-2">
+                    <span id="saveStatus" class="text-xs text-gray-400 italic self-center mr-2"></span>
+                    <button onclick="goHome()" class="text-gray-400 hover:text-white px-3 py-1 rounded border border-gray-600 hover:bg-white/10 transition text-sm">Back</button>
+                </div>
             </div>
-            <div class="flex-grow bg-white rounded-lg overflow-hidden">
-                 <iframe src="https://docs.google.com/forms/d/e/1FAIpQLSezQeL4t8QbDpy3DIlOXx6RCabLFa4r0NeIS5b34A629B1wkQ/viewform?embedded=true" class="w-full h-full border-0" marginheight="0" marginwidth="0">Loading…</iframe>
+            <textarea id="notepadArea" class="flex-grow bg-gray-900/80 text-white p-4 rounded-lg outline-none font-mono resize-none border border-white/10 focus:border-blue-500/50" placeholder="Type your notes here... They auto-save!"></textarea>
+        </div>
+    </div>
+
+    <!-- 3.2 SYSTEM SPECS SECTION -->
+    <div id="section-specs" class="section items-center justify-center">
+        <div class="bg-black/60 p-6 rounded-2xl border border-white/10 w-full max-w-2xl flex flex-col relative">
+            <div class="flex justify-between items-center mb-6">
+                <div class="flex items-center gap-3">
+                    <i class="fas fa-microchip text-xl" style="color: var(--neon-color)"></i>
+                    <h2 class="text-2xl text-white font-bold brand-font">System Specs</h2>
+                </div>
+                <button onclick="goHome()" class="text-gray-400 hover:text-white px-3 py-1 rounded border border-gray-600 hover:bg-white/10 transition text-sm">Back</button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm font-mono" id="specsGrid">
+                <!-- Injected via JS -->
             </div>
         </div>
     </div>
@@ -484,6 +587,15 @@
                 </label>
             </div>
 
+            <!-- Splash Text Settings -->
+            <div class="mb-4 flex justify-between items-center bg-black/30 p-3 rounded-lg border border-white/5">
+                <span class="text-gray-300 font-bold text-xs uppercase tracking-wider">Splash Messages</span>
+                <label class="switch">
+                    <input type="checkbox" id="splashToggle" checked onchange="toggleSplashText()">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
             <!-- Panic Button Settings -->
             <div class="mb-6 bg-black/30 p-3 rounded-lg border border-white/5">
                 <div class="flex justify-between items-center mb-2">
@@ -493,6 +605,40 @@
                 <button onclick="startKeyBinding()" id="bindKeyBtn" class="w-full py-2 border border-white/20 text-gray-300 text-xs rounded hover:bg-white/5 transition uppercase font-bold">Change Key</button>
             </div>
             
+            <!-- Custom Wallpaper Settings -->
+            <div class="mb-6 bg-black/30 p-3 rounded-lg border border-white/5">
+                <span class="text-gray-300 font-bold text-xs uppercase tracking-wider block mb-2">Custom Wallpaper</span>
+                <input type="text" id="wallpaperInput" placeholder="Paste Image URL..." class="w-full bg-black/50 border border-gray-600 p-2 rounded text-white text-xs outline-none focus:border-white mb-2">
+                <div class="flex gap-2">
+                    <button onclick="saveWallpaper()" class="flex-1 py-1 bg-blue-600/50 hover:bg-blue-600 text-white text-xs rounded transition">Apply</button>
+                    <button onclick="clearWallpaper()" class="flex-1 py-1 bg-red-600/50 hover:bg-red-600 text-white text-xs rounded transition">Clear</button>
+                </div>
+            </div>
+
+            <!-- Tab Cloaking -->
+            <div class="mb-4 bg-black/30 p-3 rounded-lg border border-white/5">
+                <span class="text-gray-300 font-bold text-xs uppercase tracking-wider block mb-2">Tab Cloaking</span>
+                <div class="grid grid-cols-3 gap-2">
+                    <button onclick="cloakTab('drive')" class="bg-white/5 hover:bg-white/10 p-2 rounded text-xs text-gray-300">Drive</button>
+                    <button onclick="cloakTab('classroom')" class="bg-white/5 hover:bg-white/10 p-2 rounded text-xs text-gray-300">Classroom</button>
+                    <button onclick="cloakTab('canvas')" class="bg-white/5 hover:bg-white/10 p-2 rounded text-xs text-gray-300">Canvas</button>
+                    <button onclick="cloakTab('zoom')" class="bg-white/5 hover:bg-white/10 p-2 rounded text-xs text-gray-300">Zoom</button>
+                    <button onclick="cloakTab('reset')" class="bg-red-900/30 hover:bg-red-900/50 p-2 rounded text-xs text-red-200 col-span-2">Reset</button>
+                </div>
+            </div>
+
+            <!-- Custom Cursors -->
+            <div class="mb-4 bg-black/30 p-3 rounded-lg border border-white/5">
+                <span class="text-gray-300 font-bold text-xs uppercase tracking-wider block mb-2">Cursor Style</span>
+                <div class="grid grid-cols-3 gap-2">
+                    <button onclick="setCursor('')" class="bg-white/5 hover:bg-white/10 p-2 rounded text-xs text-gray-300">Default</button>
+                    <button onclick="setCursor('cursor-crosshair')" class="bg-white/5 hover:bg-white/10 p-2 rounded text-xs text-gray-300 cursor-crosshair">Crosshair</button>
+                    <button onclick="setCursor('cursor-text')" class="bg-white/5 hover:bg-white/10 p-2 rounded text-xs text-gray-300 cursor-text">Text</button>
+                    <button onclick="setCursor('cursor-move')" class="bg-white/5 hover:bg-white/10 p-2 rounded text-xs text-gray-300 cursor-move">Move</button>
+                    <button onclick="setCursor('cursor-help')" class="bg-white/5 hover:bg-white/10 p-2 rounded text-xs text-gray-300 cursor-help">Help</button>
+                </div>
+            </div>
+
             <!-- Theme -->
             <div class="mb-6">
                 <p class="text-gray-300 mb-4 font-bold text-xs uppercase tracking-wider">Theme Color</p>
@@ -523,6 +669,83 @@
 
             <button onclick="openResetModal()" class="w-full py-2 bg-red-900/50 text-red-200 rounded hover:bg-red-800/50 mb-3 text-sm font-bold transition hover:scale-105 active:scale-95 border border-red-900">RESET ALL DATA</button>
             <button onclick="goHome()" class="w-full py-2 border border-gray-600 text-white rounded hover:bg-white/10 text-sm transition">Back</button>
+        </div>
+    </div>
+
+    <!-- 7. ACCOUNT SECTION -->
+    <div id="section-account" class="section items-center justify-center">
+        <!-- LOGIN FORM -->
+        <div id="login-form" class="bg-black/60 p-8 rounded-2xl border border-white/10 w-full max-w-sm text-center">
+            <h2 class="text-2xl text-white font-bold mb-4 brand-font">Student Login</h2>
+            <input id="loginName" type="text" placeholder="First Name" class="w-full bg-black/50 border border-gray-600 p-3 rounded text-white mb-3 outline-none focus:border-white">
+            <input id="loginEmail" type="email" placeholder="Email (@student.elanco.org)" class="w-full bg-black/50 border border-gray-600 p-3 rounded text-white mb-4 outline-none focus:border-white">
+            <p id="loginError" class="text-red-500 text-xs mb-4 hidden">Invalid email domain.</p>
+            <button onclick="handleLogin()" class="text-white px-6 py-2 rounded font-bold w-full" style="background-color: var(--neon-color)">Sign In</button>
+            <button onclick="goHome()" class="mt-4 text-gray-400 hover:text-white text-sm">Cancel</button>
+        </div>
+
+        <!-- PROFILE VIEW -->
+        <div id="profile-view" class="bg-black/60 p-6 rounded-2xl border border-white/10 w-full max-w-4xl h-[85vh] hidden flex-col relative overflow-y-auto custom-scrollbar">
+            <!-- Header -->
+            <div class="flex justify-between items-center mb-6 border-b border-white/10 pb-4">
+                <div class="flex items-center gap-4">
+                    <div class="w-16 h-16 rounded-full bg-gray-700 flex items-center justify-center text-3xl font-bold text-white border-2 border-white/20 relative" id="profileAvatar">
+                        <!-- Icon injected here -->
+                    </div>
+                    <div>
+                        <h2 class="text-2xl text-white font-bold brand-font" id="profileName">User Name</h2>
+                        <div class="flex gap-4 text-xs mt-1">
+                            <span class="text-gray-400" id="profileEmail">user@student.elanco.org</span>
+                            <span class="text-yellow-400 font-bold"><i class="fas fa-coins mr-1"></i><span id="profileCoins">0</span> Coins</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <button id="dailyRewardBtn" onclick="claimDailyReward()" class="bg-yellow-600/80 hover:bg-yellow-500 text-white px-3 py-1 rounded text-xs font-bold transition shadow-lg shadow-yellow-900/50 disabled:opacity-50 disabled:cursor-not-allowed">Claim Daily Reward (50 Coins)</button>
+                    <button onclick="goHome()" class="text-gray-400 hover:text-white px-3 py-1 rounded border border-gray-600 hover:bg-white/10 transition text-sm">Back</button>
+                </div>
+            </div>
+
+            <!-- Stats Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <!-- Level / XP -->
+                <div class="bg-black/30 p-4 rounded-xl border border-white/5">
+                    <h3 class="text-gray-300 font-bold text-sm uppercase mb-2">Level Progress</h3>
+                    <div class="flex justify-between items-end mb-1">
+                        <span class="text-4xl font-bold text-white brand-font" id="profileLevel">Lvl 1</span>
+                        <span class="text-xs text-gray-400 mb-1" id="profileXP">0 XP</span>
+                    </div>
+                    <div class="w-full bg-gray-700 h-2 rounded-full overflow-hidden">
+                        <div id="xpBar" class="h-full bg-blue-500 transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <!-- Calendar -->
+                <div class="bg-black/30 p-4 rounded-xl border border-white/5">
+                    <h3 class="text-gray-300 font-bold text-sm uppercase mb-2 text-center" id="calendarMonth">Calendar</h3>
+                    <div class="calendar-grid" id="calendarGrid">
+                        <!-- Days injected via JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Shop Section -->
+            <div class="mb-6">
+                 <h3 class="text-gray-300 font-bold text-sm uppercase mb-3 border-b border-white/10 pb-1">Profile Shop</h3>
+                 <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-4" id="shopGrid">
+                     <!-- Shop Items injected here -->
+                 </div>
+            </div>
+
+            <!-- Achievements -->
+            <div>
+                <h3 class="text-gray-300 font-bold text-sm uppercase mb-3 border-b border-white/10 pb-1">Achievements</h3>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4" id="achievementsGrid">
+                    <!-- Badges injected via JS -->
+                </div>
+            </div>
+            
+            <button onclick="handleLogout()" class="mt-8 text-red-400 text-xs hover:text-red-300 underline">Sign Out</button>
         </div>
     </div>
 
@@ -586,6 +809,20 @@
             <div class="flex justify-center gap-3">
                 <button onclick="closeResetModal()" class="px-4 py-2 text-gray-300 hover:text-white rounded border border-gray-600 hover:bg-gray-800 transition">Cancel</button>
                 <button onclick="performReset()" class="px-6 py-2 bg-red-600 hover:bg-red-500 text-white font-bold rounded shadow-lg shadow-red-900/50 transition transform hover:scale-105">Yes, Reset Everything</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PASSWORD MODAL -->
+    <div id="passwordModal" class="modal">
+        <div class="bg-gray-900 border border-gray-700 p-6 rounded-xl w-full max-w-sm shadow-2xl text-center">
+            <h2 class="text-xl text-white font-bold mb-4 brand-font">Enter Password</h2>
+            <p class="text-xs text-gray-400 mb-4">This app is locked.</p>
+            <input id="passwordInput" type="password" placeholder="Passcode" class="w-full bg-black/50 border border-gray-600 p-3 rounded text-white mb-4 outline-none focus:border-white text-center">
+            <p id="passwordError" class="text-red-500 text-xs mb-4 hidden">Incorrect Password</p>
+            <div class="flex gap-3 justify-center">
+                <button onclick="closePasswordModal()" class="text-gray-400 hover:text-white text-sm">Cancel</button>
+                <button onclick="checkPassword()" class="text-white px-6 py-2 rounded font-bold" style="background-color: var(--neon-color)">Unlock</button>
             </div>
         </div>
     </div>
@@ -677,6 +914,44 @@
         let panicKey = 'Backquote'; // Default to ~
         let isBindingKey = false;
         let animationFrameId;
+        let resizeListener; 
+        let konamiCode = [];
+        const konamiSequence = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
+        let pendingApp = null; // Store app details for password check
+        let splashEnabled = true;
+
+        // Account Data
+        let currentUser = null;
+        const achievementsList = [
+            { id: 'welcome', name: 'Welcome Aboard', icon: 'fa-door-open', desc: 'Sign up for an account' },
+            { id: 'gamer', name: 'Gamer', icon: 'fa-gamepad', desc: 'Play your first game' },
+            { id: 'scholar', name: 'Scholar', icon: 'fa-graduation-cap', desc: 'Use Wikipedia or Calculator' },
+            { id: 'admin', name: 'Admin Access', icon: 'fa-user-shield', desc: 'Restricted.', rare: true }, 
+            { id: 'nightowl', name: 'Night Owl', icon: 'fa-moon', desc: 'Log in after 8 PM' },
+            { id: 'earlybird', name: 'Early Bird', icon: 'fa-sun', desc: 'Log in before 8 AM' },
+            { id: 'artist', name: 'Artist', icon: 'fa-palette', desc: 'Change the theme color' },
+            { id: 'spy', name: 'Secret Agent', icon: 'fa-user-secret', desc: 'Use the Panic Button' },
+            { id: 'maestro', name: 'Maestro', icon: 'fa-music', desc: 'Open the Music Lab' },
+            { id: 'marathon', name: 'Marathon Runner', icon: 'fa-running', desc: 'Spend 30 mins active on site', rare: true },
+            { id: 'tycoon', name: 'Tycoon', icon: 'fa-gem', desc: 'Reach 500 Coins', rare: true },
+            { id: 'boss', name: 'The Boss', icon: 'fa-trophy', desc: 'Reach Level 5', rare: true }
+        ];
+        
+        // PFP Shop Data
+        const pfpShop = [
+            { id: 'default', icon: 'U', type: 'text', price: 0 },
+            { id: 'ghost', icon: 'fa-ghost', type: 'icon', price: 100 },
+            { id: 'robot', icon: 'fa-robot', type: 'icon', price: 150 },
+            { id: 'ninja', icon: 'fa-user-ninja', type: 'icon', price: 200 },
+            { id: 'astro', icon: 'fa-user-astronaut', type: 'icon', price: 250 },
+            { id: 'skull', icon: 'fa-skull', type: 'icon', price: 300 },
+            { id: 'dragon', icon: 'fa-dragon', type: 'icon', price: 500 },
+            { id: 'crown', icon: 'fa-crown', type: 'icon', price: 1000 },
+            // Unlockable PFPs
+            { id: 'timekeeper', icon: 'fa-hourglass-end', type: 'icon', price: 'Achievement', achievementReq: 'marathon' },
+            { id: 'rich', icon: 'fa-gem', type: 'icon', price: 'Achievement', achievementReq: 'tycoon' },
+            { id: 'boss', icon: 'fa-trophy', type: 'icon', price: 'Achievement', achievementReq: 'boss' }
+        ];
 
         // --- CORE FUNCTIONS ---
 
@@ -684,6 +959,14 @@
             // Load theme
             const theme = localStorage.getItem('gardenTheme');
             if(theme) setTheme(theme);
+
+            // Load wallpaper
+            const wallpaper = localStorage.getItem('gardenWallpaper');
+            if(wallpaper) setWallpaper(wallpaper, false);
+
+            // Load cursor
+            const cursor = localStorage.getItem('gardenCursor');
+            if(cursor) setCursor(cursor);
 
             // Load particles
             const particlesSetting = localStorage.getItem('gardenParticles');
@@ -696,6 +979,13 @@
             // Load Clock Setting
             is24Hour = localStorage.getItem('garden24Hour') === 'true';
             document.getElementById('clockToggle').checked = is24Hour;
+            
+            // Load Splash Setting
+            const splashSetting = localStorage.getItem('gardenSplashEnabled');
+            if (splashSetting !== null) {
+                splashEnabled = splashSetting === 'true';
+            }
+            document.getElementById('splashToggle').checked = splashEnabled;
 
             // Load Panic Key
             const savedPanicKey = localStorage.getItem('gardenPanicKey');
@@ -714,25 +1004,679 @@
             saved.forEach(g => map.set(g.url, g));
             games = Array.from(map.values());
 
+            // Load Notes
+            const savedNotes = localStorage.getItem('gardenNotes');
+            if(savedNotes) document.getElementById('notepadArea').value = savedNotes;
+
+            // Load User
+            const storedUser = localStorage.getItem('gardenUser');
+            if(storedUser) {
+                currentUser = JSON.parse(storedUser);
+                // Ensure new fields exist for old users
+                if(!currentUser.coins) currentUser.coins = 0;
+                if(!currentUser.unlockedPfps) currentUser.unlockedPfps = ['default'];
+                if(!currentUser.currentPfp) currentUser.currentPfp = 'default';
+                if(!currentUser.totalMinutes) currentUser.totalMinutes = 0;
+                
+                checkDailyLogin();
+                checkTimeAchievements();
+            }
+
+            // XP/Coin Timer
+            setInterval(() => {
+                if(currentUser) {
+                    addXP(10);
+                    addCoins(1); // 1 coin per minute passive income
+                    currentUser.totalMinutes = (currentUser.totalMinutes || 0) + 1;
+                    if(currentUser.totalMinutes >= 30) grantAchievement('marathon');
+                    saveUser();
+                }
+            }, 60000); // 60 seconds
+
             renderGames();
             renderFavoritesSection();
+            renderApps();
+            setSplashText();
+            initSplashEditor();
+            initNotepad();
+            initStatusIndicators();
             
             // Clock
-            setInterval(() => {
-                const d = new Date();
-                const options = { hour: '2-digit', minute: '2-digit', hour12: !is24Hour };
-                const timeStr = d.toLocaleTimeString([], options);
-                document.getElementById('clock').innerText = timeStr;
-            }, 1000);
+            setInterval(updateClock, 1000);
 
-            // Global Panic Key Listener (Toggle)
+            // Global Key Listener (Toggle + Konami)
             document.addEventListener('keydown', (e) => {
                 if (isBindingKey) return; 
+                
+                // Panic
                 if (e.code === panicKey) {
                     e.preventDefault();
                     const panicScreen = document.getElementById('panic-overlay');
                     panicScreen.classList.toggle('hidden');
+                    grantAchievement('spy');
                 }
+
+                // Konami
+                konamiCode.push(e.key);
+                if (konamiCode.length > konamiSequence.length) {
+                    konamiCode.shift();
+                }
+                if (JSON.stringify(konamiCode) === JSON.stringify(konamiSequence)) {
+                    activateRainbowMode();
+                }
+            });
+        }
+
+        // --- PASSWORD SYSTEM ---
+        function openPasswordModal(title, url) {
+            pendingApp = { title, url };
+            document.getElementById('passwordModal').classList.add('open');
+            document.getElementById('passwordInput').value = "";
+            document.getElementById('passwordError').classList.add('hidden');
+            document.getElementById('passwordInput').focus();
+        }
+
+        function closePasswordModal() {
+            document.getElementById('passwordModal').classList.remove('open');
+            pendingApp = null;
+        }
+
+        function checkPassword() {
+            const pass = document.getElementById('passwordInput').value;
+            if (pass === "724five") {
+                if (pendingApp) {
+                    launchGame(pendingApp.title, pendingApp.url);
+                }
+                closePasswordModal();
+            } else {
+                document.getElementById('passwordError').classList.remove('hidden');
+                document.getElementById('passwordInput').value = "";
+                document.getElementById('passwordInput').focus();
+            }
+        }
+        
+        // Allow Enter key in password modal
+        document.getElementById('passwordInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') checkPassword();
+        });
+
+        // --- ACCOUNT & XP SYSTEM ---
+        
+        function handleLogin() {
+            const name = document.getElementById('loginName').value.trim();
+            const email = document.getElementById('loginEmail').value.trim();
+            const errorMsg = document.getElementById('loginError');
+
+            if (!email.endsWith('@student.elanco.org')) {
+                errorMsg.classList.remove('hidden');
+                return;
+            }
+
+            // Create User
+            currentUser = {
+                name: name,
+                email: email,
+                level: 1,
+                xp: 0,
+                coins: 50, // Sign up bonus
+                achievements: ['welcome'],
+                lastLoginDate: new Date().toDateString(),
+                unlockedPfps: ['default'],
+                currentPfp: 'default',
+                totalMinutes: 0
+            };
+
+            // Check for Admin Achievement
+            const lowerName = name.toLowerCase();
+            if (lowerName === 'pavlo' || lowerName === 'alex' || lowerName === 'jackson') {
+                currentUser.achievements.push('admin');
+            }
+
+            saveUser();
+            initAccountUI();
+            checkTimeAchievements();
+            // Just signed up so disable daily for today
+            document.getElementById('dailyRewardBtn').disabled = true;
+            document.getElementById('dailyRewardBtn').innerText = "Claimed for Today";
+            document.getElementById('dailyRewardBtn').classList.add('opacity-50', 'cursor-not-allowed');
+        }
+
+        function handleLogout() {
+            localStorage.removeItem('gardenUser');
+            currentUser = null;
+            location.reload();
+        }
+
+        function saveUser() {
+            localStorage.setItem('gardenUser', JSON.stringify(currentUser));
+        }
+
+        function addXP(amount) {
+            if (!currentUser) return;
+            currentUser.xp += amount;
+            const nextLevel = Math.floor(currentUser.xp / 100) + 1;
+            if (nextLevel > currentUser.level) {
+                currentUser.level = nextLevel;
+                if(currentUser.level >= 5) grantAchievement('boss');
+            }
+            saveUser();
+            if(document.getElementById('section-account').classList.contains('active')) updateProfileStats();
+        }
+
+        function addCoins(amount) {
+             if (!currentUser) return;
+             currentUser.coins += amount;
+             if(currentUser.coins >= 500) grantAchievement('tycoon');
+             saveUser();
+             if(document.getElementById('section-account').classList.contains('active')) updateProfileStats();
+        }
+
+        function grantAchievement(id) {
+            if (!currentUser || currentUser.achievements.includes(id)) return;
+            currentUser.achievements.push(id);
+            
+            // Check rewards
+            if(id === 'marathon') unlockPfp('timekeeper');
+            if(id === 'tycoon') unlockPfp('rich');
+            if(id === 'boss') unlockPfp('boss');
+
+            saveUser();
+            if(document.getElementById('section-account').classList.contains('active')) {
+                renderAchievements();
+                renderShop();
+            }
+        }
+        
+        function unlockPfp(pfpId) {
+            if(!currentUser.unlockedPfps.includes(pfpId)) {
+                currentUser.unlockedPfps.push(pfpId);
+            }
+        }
+
+        function checkTimeAchievements() {
+            if (!currentUser) return;
+            const hour = new Date().getHours();
+            if (hour >= 20 || hour < 4) grantAchievement('nightowl');
+            if (hour >= 4 && hour < 8) grantAchievement('earlybird');
+        }
+
+        function checkDailyLogin() {
+            if(!currentUser) return;
+            const today = new Date().toDateString();
+            const btn = document.getElementById('dailyRewardBtn');
+            
+            if (currentUser.lastLoginDate !== today) {
+                btn.disabled = false;
+                btn.innerText = "Claim Daily Reward (50 Coins)";
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+            } else {
+                btn.disabled = true;
+                btn.innerText = "Claimed for Today";
+                btn.classList.add('opacity-50', 'cursor-not-allowed');
+            }
+        }
+
+        function claimDailyReward() {
+            if(!currentUser) return;
+            addCoins(50);
+            currentUser.lastLoginDate = new Date().toDateString();
+            saveUser();
+            checkDailyLogin();
+        }
+
+        // --- SHOP SYSTEM ---
+        function buyPfp(id, price) {
+            if(currentUser.coins >= price) {
+                currentUser.coins -= price;
+                currentUser.unlockedPfps.push(id);
+                saveUser();
+                renderShop(); // Refresh UI
+                updateProfileStats();
+            } else {
+                alert("Not enough coins!");
+            }
+        }
+
+        function equipPfp(id) {
+            currentUser.currentPfp = id;
+            saveUser();
+            renderShop();
+            renderProfileAvatar();
+        }
+
+        function renderShop() {
+            const grid = document.getElementById('shopGrid');
+            grid.innerHTML = "";
+
+            pfpShop.forEach(item => {
+                const isOwned = currentUser.unlockedPfps.includes(item.id);
+                const isEquipped = currentUser.currentPfp === item.id;
+                
+                const card = document.createElement('div');
+                card.className = `bg-black/40 p-3 rounded-lg border flex flex-col items-center gap-2 relative ${isEquipped ? 'border-yellow-400' : 'border-white/10'}`;
+                
+                // Item Icon
+                let iconHtml = '';
+                if (item.type === 'text') {
+                    iconHtml = `<span class="text-2xl font-bold text-white">${currentUser.name.charAt(0).toUpperCase()}</span>`;
+                } else {
+                    iconHtml = `<i class="fas ${item.icon} text-2xl text-white"></i>`;
+                }
+
+                let actionBtn = '';
+                if (isEquipped) {
+                    actionBtn = `<button class="text-xs bg-yellow-600 text-white w-full py-1 rounded cursor-default">Equipped</button>`;
+                } else if (isOwned) {
+                    actionBtn = `<button onclick="equipPfp('${item.id}')" class="text-xs bg-blue-600 hover:bg-blue-500 text-white w-full py-1 rounded">Equip</button>`;
+                } else {
+                    if (item.price === 'Achievement') {
+                        // Check if unlocked via achievement logic in 'isOwned'
+                        // Since 'isOwned' is false here, it means they don't have it.
+                        // So show locked text.
+                        const achName = achievementsList.find(a => a.id === item.achievementReq)?.name || "Achievement";
+                        actionBtn = `<button class="text-[10px] bg-gray-700 text-gray-400 w-full py-1 rounded cursor-not-allowed">Unlock: ${achName}</button>`;
+                    } else {
+                        actionBtn = `<button onclick="buyPfp('${item.id}', ${item.price})" class="text-xs bg-green-700 hover:bg-green-600 text-white w-full py-1 rounded">${item.price} <i class="fas fa-coins text-[10px]"></i></button>`;
+                    }
+                }
+
+                card.innerHTML = `
+                    <div class="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center border border-white/20 mb-1">
+                        ${iconHtml}
+                    </div>
+                    ${actionBtn}
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function renderProfileAvatar() {
+            const avatarEl = document.getElementById('profileAvatar');
+            if(!currentUser) return;
+            
+            const pfpId = currentUser.currentPfp || 'default';
+            const pfpData = pfpShop.find(p => p.id === pfpId) || pfpShop[0];
+            
+            avatarEl.innerHTML = ""; // Clear old
+            
+            if (pfpData.type === 'text') {
+                avatarEl.innerText = currentUser.name.charAt(0).toUpperCase();
+            } else {
+                avatarEl.innerHTML = `<i class="fas ${pfpData.icon}"></i>`;
+            }
+        }
+
+        function initAccountUI() {
+            const loginForm = document.getElementById('login-form');
+            const profileView = document.getElementById('profile-view');
+
+            if (currentUser) {
+                loginForm.classList.add('hidden');
+                profileView.classList.remove('hidden');
+                profileView.classList.add('flex');
+                
+                document.getElementById('profileName').innerText = currentUser.name;
+                document.getElementById('profileEmail').innerText = currentUser.email;
+                
+                renderProfileAvatar(); // Set correct PFP
+                updateProfileStats();
+                renderCalendar();
+                renderAchievements();
+                renderShop(); // Load Shop
+                checkDailyLogin();
+            } else {
+                loginForm.classList.remove('hidden');
+                profileView.classList.add('hidden');
+                profileView.classList.remove('flex');
+            }
+        }
+
+        function updateProfileStats() {
+            if(!currentUser) return;
+            document.getElementById('profileLevel').innerText = `Lvl ${currentUser.level}`;
+            document.getElementById('profileXP').innerText = `${currentUser.xp} XP`;
+            document.getElementById('profileCoins').innerText = currentUser.coins; // Update Coins
+            
+            const progress = currentUser.xp % 100;
+            document.getElementById('xpBar').style.width = `${progress}%`;
+        }
+
+        function renderAchievements() {
+            const grid = document.getElementById('achievementsGrid');
+            grid.innerHTML = "";
+            
+            achievementsList.forEach(ach => {
+                const unlocked = currentUser.achievements.includes(ach.id);
+                const colorClass = unlocked ? (ach.rare ? 'text-yellow-400 border-yellow-400/50 bg-yellow-400/10' : 'text-blue-400 border-blue-400/50 bg-blue-400/10') : 'text-gray-600 border-gray-700 bg-black/20';
+                const opacity = unlocked ? 'opacity-100' : 'opacity-50';
+                
+                const div = document.createElement('div');
+                div.className = `p-3 rounded-lg border flex flex-col items-center text-center gap-2 ${colorClass} ${opacity}`;
+                div.innerHTML = `
+                    <i class="fas ${ach.icon} text-2xl"></i>
+                    <div>
+                        <div class="font-bold text-xs">${ach.name}</div>
+                        <div class="text-[10px] opacity-70">${ach.desc}</div>
+                    </div>
+                `;
+                grid.appendChild(div);
+            });
+        }
+
+        function renderCalendar() {
+            const grid = document.getElementById('calendarGrid');
+            const monthLabel = document.getElementById('calendarMonth');
+            grid.innerHTML = "";
+            
+            const date = new Date();
+            const month = date.toLocaleString('default', { month: 'long' });
+            const year = date.getFullYear();
+            const today = date.getDate();
+            
+            monthLabel.innerText = `${month} ${year}`;
+            
+            // Simple calendar logic
+            const daysInMonth = new Date(year, date.getMonth() + 1, 0).getDate();
+            const firstDay = new Date(year, date.getMonth(), 1).getDay(); // 0 = Sun
+            
+            // Empty slots
+            for(let i=0; i<firstDay; i++) {
+                grid.appendChild(document.createElement('div'));
+            }
+            
+            // Days
+            for(let i=1; i<=daysInMonth; i++) {
+                const d = document.createElement('div');
+                d.className = `calendar-day ${i === today ? 'calendar-today' : ''}`;
+                d.innerText = i;
+                grid.appendChild(d);
+            }
+        }
+
+        // Hook navigation to check account status
+        const originalNavTo = navTo;
+        // Modified navTo is below in NAVIGATION section
+
+        // --- STATUS INDICATORS ---
+        function initStatusIndicators() {
+            const batteryEl = document.getElementById('battery-level');
+            const wifiEl = document.getElementById('wifi-icon');
+
+            // Wifi
+            function updateWifi() {
+                wifiEl.innerHTML = navigator.onLine ? '<i class="fas fa-wifi"></i>' : '<i class="fas fa-wifi-slash text-red-500"></i>';
+            }
+            window.addEventListener('online', updateWifi);
+            window.addEventListener('offline', updateWifi);
+            updateWifi();
+
+            // Battery (Chrome only mostly)
+            if ('getBattery' in navigator) {
+                navigator.getBattery().then(battery => {
+                    batteryEl.classList.remove('hidden');
+                    function updateBattery() {
+                        const level = Math.round(battery.level * 100);
+                        const icon = level > 75 ? 'fa-battery-full' : level > 50 ? 'fa-battery-three-quarters' : level > 25 ? 'fa-battery-half' : 'fa-battery-quarter';
+                        batteryEl.innerHTML = `<i class="fas ${icon}"></i> <span>${level}%</span>`;
+                    }
+                    updateBattery();
+                    battery.addEventListener('levelchange', updateBattery);
+                });
+            }
+        }
+
+        function updateClock() {
+            const d = new Date();
+            const options = { hour: '2-digit', minute: '2-digit', hour12: !is24Hour };
+            const timeStr = d.toLocaleTimeString([], options);
+            document.getElementById('clock').innerText = timeStr;
+        }
+
+        // --- TAB CLOAKING ---
+        function cloakTab(service) {
+            let title = "GARDENSPOT";
+            let icon = "favicon.ico";
+
+            if (service === 'drive') {
+                title = "My Drive - Google Drive";
+                icon = "https://ssl.gstatic.com/images/branding/product/1x/drive_2020q4_32dp.png";
+            } else if (service === 'classroom') {
+                title = "Classes";
+                icon = "https://ssl.gstatic.com/classroom/favicon.png";
+            } else if (service === 'canvas') {
+                title = "Dashboard";
+                icon = "https://du11hjcvx0uqb.cloudfront.net/dist/images/favicon-e10d657a73.ico";
+            } else if (service === 'zoom') {
+                title = "Zoom Meeting";
+                icon = "https://st1.zoom.us/zoom.ico";
+            }
+
+            document.title = title;
+            let link = document.querySelector("link[rel*='icon']") || document.createElement('link');
+            link.type = 'image/x-icon';
+            link.rel = 'shortcut icon';
+            link.href = icon;
+            document.head.appendChild(link);
+        }
+
+        // --- CUSTOM CURSOR ---
+        function setCursor(cursorClass) {
+            document.body.className = document.body.className.replace(/cursor-\w+/g, "").trim();
+            if(cursorClass) document.body.classList.add(cursorClass);
+            localStorage.setItem('gardenCursor', cursorClass);
+        }
+
+        // --- KONAMI CODE ---
+        function activateRainbowMode() {
+            document.body.classList.add('rainbow-mode');
+            alert("🌈 KONAMI CODE ACTIVATED! 🌈");
+        }
+
+        // --- NOTEPAD ---
+        function initNotepad() {
+            const textarea = document.getElementById('notepadArea');
+            const status = document.getElementById('saveStatus');
+            
+            textarea.addEventListener('input', () => {
+                localStorage.setItem('gardenNotes', textarea.value);
+                status.innerText = "Saved";
+                setTimeout(() => status.innerText = "", 1000);
+            });
+        }
+
+        // --- WALLPAPER ---
+        function saveWallpaper() {
+            const url = document.getElementById('wallpaperInput').value.trim();
+            if(url) {
+                setWallpaper(url, true);
+                document.getElementById('wallpaperInput').value = "";
+            }
+        }
+
+        function setWallpaper(url, save) {
+            const bgDiv = document.getElementById('custom-bg');
+            bgDiv.style.backgroundImage = `url('${url}')`;
+            bgDiv.style.opacity = 1;
+            
+            // Hide waves/particles for clearer view
+            document.querySelector('.wave-container').style.opacity = 0;
+            document.getElementById('particle-canvas').style.opacity = 0;
+
+            if(save) localStorage.setItem('gardenWallpaper', url);
+        }
+
+        function clearWallpaper() {
+            const bgDiv = document.getElementById('custom-bg');
+            bgDiv.style.opacity = 0;
+            setTimeout(() => bgDiv.style.backgroundImage = 'none', 500);
+
+            document.querySelector('.wave-container').style.opacity = 1;
+            document.getElementById('particle-canvas').style.opacity = 1;
+            
+            localStorage.removeItem('gardenWallpaper');
+        }
+
+        // --- SPLASH TEXT TOGGLE ---
+        function toggleSplashText() {
+            const checkbox = document.getElementById('splashToggle');
+            splashEnabled = checkbox.checked;
+            localStorage.setItem('gardenSplashEnabled', splashEnabled);
+            setSplashText(); // Update immediate visibility
+        }
+
+        // --- SPLASH TEXT ---
+        function setSplashText() {
+            const splashEl = document.getElementById('splash-text');
+            
+            if (!splashEnabled) {
+                splashEl.style.display = 'none';
+                return;
+            } else {
+                splashEl.style.display = 'block';
+            }
+
+            const customSplash = localStorage.getItem('gardenCustomSplash');
+            if (customSplash) {
+                splashEl.innerText = customSplash;
+                return;
+            }
+
+            const msgs = [
+                "Pavlo is cool", "Best website at Gardenspot", "Click `~` to hide", "Go Eagles!", "Go 76ers!", 
+                "Subscribe to @aFIlters on YouTube", "Don't get caught!", "Teachers look away now", "Loading swag...", 
+                "Is this math class?", "Press `~` for magic", "Do your homework first", "Unblocked and unstoppable", 
+                "Shhh... keep it down", "GardenSpot OS: Better than Windows", "Why are you reading this?", 
+                "Click the heart to favorite!", "Use the Panic Key!", "Change the theme in Settings", "I see you...", 
+                "Act natural", "Definitely educational content", "Powered by potatoes", "Have you drunk water today?", 
+                "Touch grass? No, play games.", "Simulation initialized", "Error 404: Homework not found", 
+                "Just one more game...", "The bell doesn't dismiss you, I do.", "Customize your colors!", 
+                "Try the Weather App", "Music makes it better", "Don't tell the principal", "Made with <3 by Pavlo", 
+                "Zoom zoom", "Keep calm and game on", "Warning: May cause fun", "Check out the Coin Shop", 
+                "Daily login streak?", "Unlock the Gold Theme!", "Subway Surfers is life", "Minecraft > Homework", 
+                "Keyboard warriors unite", "Click click click", "Refresh for a new message", "Hello there", 
+                "It's a trap!", "May the force be with you", "I am your father", "To infinity and beyond!", 
+                "Just keep swimming", "Winter is coming", "Gotta catch 'em all", "It's dangerous to go alone", 
+                "Do a barrel roll", "The cake is a lie", "Press Start", "Game Over", "Insert Coin", "Ready Player One", 
+                "Level Up!", "High Score", "Finish Him!", "Get over here!", "Hey! Listen!", "It's a me, Mario!", 
+                "Sonic speed!", "Victory Royale", "Winner Winner Chicken Dinner", "GG EZ", "Noob", "L33t", 
+                "Glitch in the matrix", "Follow the white rabbit", "Blue pill or red pill?", "There is no spoon", 
+                "I know kung fu", "My precious", "You shall not pass!", "Wakanda Forever", "I am Iron Man", 
+                "Avengers Assemble", "I can do this all day", "Hulk Smash", "I am Groot", "Whatever it takes", 
+                "Spider-Sense tingling", "Shazam!", "I'm Batman", "Why so serious?", "To the Batmobile!", 
+                "Up, up and away!", "Kryptonite", "Adventure Time!", "Mathematical!", "Oh my glob", "Bacon pancakes", 
+                "SpongeBob SquarePants", "I'm ready!", "No, this is Patrick", "My leg!", "F is for friends", 
+                "Plankton!", "Secret Formula", "Chocolate!", "Future!", "Imagination", "Where's Perry?", 
+                "Trust no one", "Bill Cipher", "Mystery Shack", "Wubba Lubba Dub Dub", "Get Schwifty", 
+                "Pickle Rick", "Look at me!", "Existence is pain", "Show me what you got", "Boo! Not cool", 
+                "Good job", "Oh yeah", "You gotta get schwifty", "It's the best", "Take a load off", 
+                "Time to get schwifty", "GardenSpot forever", "Tell your friends", "Don't block me bro", 
+                "VPNs are for the weak", "HTML5 Magic", "Javascript Jedi", "CSS Wizardry", "100% Organic Games", 
+                "No pesticides used", "Freshly picked games", "Locally sourced fun", "Farm to Table Gaming", 
+                "A bit of fun", "Pause your work", "Take a break", "You deserve this", "Study hard play hard", 
+                "A+", "Gold Star", "Teacher's Pet", "Class Clown", "Valedictorian of Gaming", "Philly Special", 
+                "Trust the Process", "Fly Eagles Fly", "1-2-3-4-5-76ers", "Broad Street Bullies", "Phillie Phanatic", 
+                "Gritty is watching", "Brotherly Love", "Cheesesteaks > Everything", "Liberty Bell cracked for this", 
+                "Rocky Steps", "Eye of the Tiger", "Yo Adrian!", "E-A-G-L-E-S", "Clap your hands", 
+                "Here they come", "Sixers!", "Phillies!", "Flyers!", "Union!", "Philadelphia", "PA Pride", 
+                "Keystone State", "Amish Country", "Horse and Buggy Speed", "Whoopie Pies", "Shoofly Pie", 
+                "Lancaster County", "Susquehanna", "Red Rose City", "White Rose City", "Penn's Woods", 
+                "Virtue, Liberty, and Independence", "Commonwealth", "Keystone", "Coal Region", "Steel City", 
+                "Pitt", "Penn State", "We Are", "Nittany Lions", "Temple", "Villanova", "St. Joe's", 
+                "La Salle", "Drexel", "UPenn", "Quakers", "Owls", "Wildcats", "Hawks", "Explorers", 
+                "Dragons", "Fight on State", "Hail to Pitt", "Fly the L", "Roll Tech", "Go Birds", 
+                "Bleed Green", "Kelly Green", "Midnight Green", "Silver and Black", "Orange and Black", 
+                "Red and Blue", "Blue and Gold", "Cherry and White", "Navy and White", "Maroon and Gold",
+                "Alex was here", "Jackson was here", "Pavlo was here", "v1.44 is goated",
+                "Should I add sticky notes?", "Any other ideas? tell me in the \"request app\"",
+                "What games should I add?"
+            ];
+            const r = Math.floor(Math.random() * msgs.length);
+            splashEl.innerText = msgs[r];
+        }
+
+        // --- SPLASH TEXT EDITOR ---
+        function initSplashEditor() {
+            const splashLabel = document.getElementById('splash-text');
+            splashLabel.title = "Double-click to edit";
+            splashLabel.style.cursor = "pointer";
+
+            splashLabel.addEventListener('dblclick', () => {
+                if(!splashEnabled) return; // Don't edit if hidden
+
+                const current = splashLabel.innerText;
+                const input = document.createElement('input');
+                input.value = current;
+                input.maxLength = 30; // Char limit
+                // Match styles to blend in
+                input.className = "bg-black/50 text-white font-mono text-xs md:text-sm text-center outline-none border border-blue-500 rounded px-2 py-1 w-64";
+                
+                splashLabel.innerHTML = "";
+                splashLabel.appendChild(input);
+                input.focus();
+                
+                function save() {
+                    const val = input.value.trim();
+                    if (val) {
+                        localStorage.setItem('gardenCustomSplash', val);
+                        splashLabel.innerText = val;
+                    } else {
+                        localStorage.removeItem('gardenCustomSplash');
+                        setSplashText(); // Restore random
+                    }
+                }
+
+                input.addEventListener('blur', save);
+                input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') input.blur();
+                });
+            });
+        }
+
+        // --- APPS RENDERER ---
+        function renderApps() {
+            const grid = document.getElementById('appsGrid');
+            if(!grid) return;
+            grid.innerHTML = "";
+            
+            const appList = [
+                { title: "Request Games", url: "https://docs.google.com/forms/d/e/1FAIpQLSezQeL4t8QbDpy3DIlOXx6RCabLFa4r0NeIS5b34A629B1wkQ/viewform?embedded=true", icon: "fa-paper-plane" },
+                { title: "Notepad", url: "notepad", icon: "fa-sticky-note" },
+                { title: "System Specs", url: "specs", icon: "fa-microchip" },
+                { title: "AI Chat", url: "https://www.chattide.ai/chat-gpt/", icon: "fa-robot" },
+                { title: "Calculator", url: "https://www.desmos.com/scientific", icon: "fa-calculator" },
+                { title: "Lines", url: "https://lines.chromeexperiments.com/", icon: "fa-bezier-curve" },
+                { title: "Maps", url: "https://www.openstreetmap.org/export/embed.html", icon: "fa-map-marked-alt" },
+                { title: "Space", url: "https://mrdoob.com/projects/chromeexperiments/google-space/", icon: "fa-rocket" },
+                { title: "Paint", url: "https://jspaint.app/", icon: "fa-palette" },
+                { title: "Music Lab", url: "https://musiclab.chromeexperiments.com/Song-Maker/", icon: "fa-music" },
+                { title: "Windows Emulator", url: "https://t9os.vercel.app/class.html", icon: "fa-window-maximize" },
+                { title: "Wikipedia", url: "https://en.m.wikipedia.org/", icon: "fa-book" },
+                { title: "Global Weather", url: "https://embed.windy.com/embed2.html", icon: "fa-cloud-sun" }
+            ];
+
+            appList.forEach(app => {
+                const el = document.createElement('div');
+                el.className = 'game-card h-40 group flex flex-col items-center justify-center gap-4 bg-gray-900 hover:bg-gray-800 transition cursor-pointer';
+                
+                if (app.url === "notepad") {
+                    el.onclick = () => navTo('notepad');
+                } else if (app.url === "specs") {
+                    el.onclick = () => {
+                        loadSystemSpecs();
+                        navTo('specs');
+                    };
+                } else if (app.title === "Windows Emulator") {
+                    el.onclick = () => openPasswordModal(app.title, app.url);
+                } else {
+                    el.onclick = () => launchGame(app.title, app.url);
+                }
+                
+                // Removed 'brand-font' class from the span below
+                el.innerHTML = `
+                    <i class="fas ${app.icon} text-4xl text-gray-400 group-hover:text-white transition" style="text-shadow: 0 0 10px var(--neon-color)"></i>
+                    <span class="text-xl font-bold text-gray-300 group-hover:text-white tracking-wide">${app.title}</span>
+                `;
+                grid.appendChild(el);
             });
         }
 
@@ -893,10 +1837,30 @@
             const ctx = canvas.getContext('2d');
             let particles = [];
             
+            // Mouse tracking for visualizer
+            let mouseSpeed = 0;
+            let lastMouseX = 0;
+            let lastMouseY = 0;
+            
+            document.addEventListener('mousemove', (e) => {
+                const dx = e.clientX - lastMouseX;
+                const dy = e.clientY - lastMouseY;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+                
+                mouseSpeed = dist * 0.05; // Sensitivity
+                if (mouseSpeed > 8) mouseSpeed = 8; // Cap speed
+                
+                lastMouseX = e.clientX;
+                lastMouseY = e.clientY;
+            });
+
             function resize() {
                 canvas.width = window.innerWidth;
                 canvas.height = window.innerHeight;
             }
+            // Fix: remove previous listener to prevent leaks if called multiple times
+            if(resizeListener) window.removeEventListener('resize', resizeListener);
+            resizeListener = resize;
             window.addEventListener('resize', resize);
             resize();
 
@@ -905,17 +1869,25 @@
                     this.x = Math.random() * canvas.width;
                     this.y = Math.random() * canvas.height;
                     this.size = Math.random() * 2 + 0.5;
-                    this.speedX = Math.random() * 0.5 - 0.25;
-                    this.speedY = Math.random() * 0.5 - 0.25;
+                    this.baseSpeedX = Math.random() * 0.5 - 0.25;
+                    this.baseSpeedY = Math.random() * 0.5 - 0.25;
                     this.opacity = Math.random() * 0.5 + 0.2;
                 }
                 update() {
-                    this.x += this.speedX;
-                    this.y += this.speedY;
+                    // React to mouse speed
+                    let speedMult = 1 + mouseSpeed;
+                    
+                    this.x += this.baseSpeedX * speedMult;
+                    this.y += this.baseSpeedY * speedMult;
+                    
+                    // Boundary wrap
                     if (this.x > canvas.width) this.x = 0;
                     if (this.x < 0) this.x = canvas.width;
                     if (this.y > canvas.height) this.y = 0;
                     if (this.y < 0) this.y = canvas.height;
+                    
+                    // Decay mouse speed effect
+                    if (mouseSpeed > 0) mouseSpeed *= 0.95;
                 }
                 draw() {
                     ctx.fillStyle = `rgba(255, 255, 255, ${this.opacity})`;
@@ -960,6 +1932,11 @@
         // --- NAVIGATION ---
 
         function navTo(id) {
+            // Check account requirement before entering sections
+            if(id === 'account') {
+                initAccountUI();
+            }
+            
             document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
             document.getElementById(`section-${id}`).classList.add('active');
         }
@@ -976,6 +1953,12 @@
             if (!localStorage.getItem('gardenTutorialShown')) {
                 document.getElementById('player-tutorial').classList.remove('hidden');
             }
+            
+            // Add XP removed here (now time based)
+            grantAchievement('gamer');
+            if (title === "Calculator" || title === "Wikipedia") grantAchievement('scholar');
+            if (title === "Music Lab") grantAchievement('maestro');
+            if (title === "Global Weather") grantAchievement('meteorologist');
 
             const player = document.getElementById('section-player');
             const frame = document.getElementById('gameFrame');
@@ -1032,6 +2015,7 @@
             document.documentElement.style.setProperty('--neon-color', color);
             document.documentElement.style.setProperty('--bg-glow', `rgba(${r}, ${g}, ${b}, 0.2)`);
             localStorage.setItem('gardenTheme', color);
+            grantAchievement('artist');
         }
 
         // --- MODAL ---
@@ -1039,8 +2023,10 @@
         function closeAddModal() { document.getElementById('addModal').classList.remove('open'); }
         
         function saveGame() {
-            const title = document.getElementById('newTitle').value;
-            const url = document.getElementById('newUrl').value;
+            const titleInput = document.getElementById('newTitle');
+            const urlInput = document.getElementById('newUrl');
+            const title = titleInput.value.trim();
+            const url = urlInput.value.trim();
             
             if(title && url) {
                 const newGame = { title, url };
