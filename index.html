@@ -8,31 +8,79 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     
-    <!-- AI Logic -->
-    <script>
-        const apiKey = ""; // Environment provides key at runtime
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        async function fetchGemini(prompt) {
-            if (!apiKey) {
-                await new Promise(r => setTimeout(r, 1000));
-                return "I am currently offline. Please check settings or try again later.";
-            }
+        // Global Firebase Variables
+        let db, auth, appId;
+        
+        // Initialize Firebase
+        try {
+            if (typeof __firebase_config !== 'undefined') {
+                const firebaseConfig = JSON.parse(__firebase_config);
+                const app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+                appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
-            try {
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-                });
+                // Auth Flow
+                const initAuth = async () => {
+                    try {
+                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                            await signInWithCustomToken(auth, __initial_auth_token);
+                        } else {
+                            await signInAnonymously(auth);
+                        }
+                    } catch (error) {
+                        console.log("Auth skipped (Local/Restricted Mode)");
+                    }
+                };
                 
-                if (!response.ok) throw new Error(`API Error: ${response.status}`);
+                initAuth();
+
+                // Expose chat functions to window
+                window.firebaseChat = {
+                    sendMessage: async (text, username) => {
+                        if (!auth.currentUser) return;
+                        try {
+                            const chatCol = collection(db, 'artifacts', appId, 'public', 'data', 'chat');
+                            await addDoc(chatCol, {
+                                text: text,
+                                sender: username,
+                                timestamp: Date.now()
+                            });
+                        } catch (e) {
+                            console.log("Chat unavailable");
+                        }
+                    },
+                    listen: (callback) => {
+                        if (!auth.currentUser) return () => {}; 
+                        
+                        try {
+                            const chatCol = collection(db, 'artifacts', appId, 'public', 'data', 'chat');
+                            const unsubscribe = onSnapshot(chatCol, (snapshot) => {
+                                const msgs = [];
+                                snapshot.forEach(doc => msgs.push(doc.data()));
+                                msgs.sort((a, b) => a.timestamp - b.timestamp);
+                                callback(msgs);
+                            }, (error) => {
+                               // Silent fail for permissions
+                               console.log("Chat stream disconnected");
+                            });
+                            return unsubscribe;
+                        } catch(e) {
+                            return () => {};
+                        }
+                    }
+                };
                 
-                const data = await response.json();
-                return data.candidates?.[0]?.content?.parts?.[0]?.text || "I'm not sure what to say.";
-            } catch (err) {
-                console.error(err);
-                return "Error: Unable to reach GardenBot servers.";
+                window.firebaseReady = true;
             }
+        } catch (e) {
+            console.log("Firebase not configured");
         }
     </script>
 
@@ -65,7 +113,20 @@
         body.cursor-help { cursor: help; }
         body.cursor-pointer { cursor: pointer; }
 
-        /* LAYERS */
+        /* LAYERS (Bug Fix: Re-ordered z-indices) */
+        
+        /* 1. Base Gradient (Bottom) */
+        #base-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -5;
+            background: radial-gradient(circle at 50% 120%, var(--bg-glow) 0%, #050505 60%, #000 100%);
+        }
+
+        /* 2. Custom Image Wallpaper (Sits on top of base) */
         #custom-bg {
             position: fixed;
             top: 0;
@@ -79,17 +140,6 @@
             transition: opacity 0.5s ease;
         }
 
-        /* 2. Base Gradient (Default BG) */
-        #base-bg {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: -3;
-            background: radial-gradient(circle at 50% 120%, var(--bg-glow) 0%, #050505 60%, #000 100%);
-        }
-
         /* 3. Particles */
         #particle-canvas {
             position: fixed;
@@ -97,7 +147,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            z-index: -2;
+            z-index: -3;
             pointer-events: none;
         }
 
@@ -108,7 +158,7 @@
             height: 100%;
             top: 0;
             left: 0;
-            z-index: -1;
+            z-index: -2;
             pointer-events: none;
         }
         .wave {
@@ -408,6 +458,25 @@
             color: black;
             font-weight: bold;
         }
+
+        /* CHAT STYLES */
+        #chat-messages {
+            scroll-behavior: smooth;
+        }
+        .chat-msg {
+            margin-bottom: 8px;
+            padding: 8px 12px;
+            border-radius: 12px;
+            background: rgba(255,255,255,0.05);
+            font-size: 0.85rem;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        .chat-msg .sender {
+            font-weight: bold;
+            color: var(--neon-color);
+            font-size: 0.75rem;
+            margin-bottom: 2px;
+        }
         
         /* SHOP MODAL SPECIAL STYLE */
         #shopModal .modal-content {
@@ -419,13 +488,13 @@
 </head>
 <body>
 
-    <!-- CUSTOM WALLPAPER LAYER -->
-    <div id="custom-bg"></div>
-    
-    <!-- BASE BG -->
+    <!-- BASE BG (Bottom Layer) -->
     <div id="base-bg"></div>
 
-    <!-- PARTICLES (Now ABOVE base bg) -->
+    <!-- CUSTOM WALLPAPER LAYER (Sits above base) -->
+    <div id="custom-bg"></div>
+    
+    <!-- PARTICLES (Sits above wallpaper) -->
     <canvas id="particle-canvas"></canvas>
 
     <!-- WAVES (Topmost background layer) -->
@@ -498,7 +567,7 @@
             </div>
         </div>
         <div class="absolute bottom-10 text-gray-500 text-center">
-            <div class="text-xs font-bold mb-1">GardenSpot OS v1.60</div>
+            <div class="text-xs font-bold mb-1">GardenSpot OS v1.63</div>
             <div class="text-[10px] opacity-70 tracking-widest">By Pavlo</div>
         </div>
     </div>
@@ -612,12 +681,11 @@
     <!-- 4. UNBLOCKER -->
     <div id="section-unblocker" class="section items-center justify-center">
         <div class="bg-black/60 p-8 rounded-2xl border border-white/10 w-full max-w-lg text-center">
-            <i class="fas fa-lock text-5xl mb-4" style="color: var(--neon-color)"></i>
-            <h2 class="text-2xl text-white font-bold mb-2">Restricted Gateway</h2>
-            <p class="text-xs text-gray-400 mb-4">Enter the access code to unlock the hidden portal.</p>
-            <input id="wikiCodeInput" type="password" placeholder="Enter Access Code" class="w-full bg-black/50 border border-gray-600 p-3 rounded text-white mb-4 outline-none focus:border-white text-center">
-            <p id="wikiError" class="text-red-500 text-xs mb-3 hidden">Access Denied: Incorrect Code</p>
-            <button onclick="checkWikiCode()" class="text-white px-6 py-2 rounded font-bold w-full" style="background-color: var(--neon-color)">Unlock</button>
+            <i class="fas fa-mask text-5xl mb-4" style="color: var(--neon-color)"></i>
+            <h2 class="text-2xl text-white font-bold mb-2">Frame Loader</h2>
+            <p class="text-xs text-gray-400 mb-4">Enter a URL to load it inside GardenSpot. Some websites may refuse to connect.</p>
+            <input id="proxyUrl" type="text" placeholder="https://example.com" class="w-full bg-black/50 border border-gray-600 p-3 rounded text-white mb-4 outline-none focus:border-white">
+            <button onclick="launchProxy()" class="text-white px-6 py-2 rounded font-bold w-full" style="background-color: var(--neon-color)">GO</button>
             <button onclick="goHome()" class="mt-4 text-gray-400 hover:text-white text-sm">Cancel</button>
         </div>
     </div>
@@ -802,16 +870,19 @@
                     </div>
                 </div>
 
-                <!-- Calendar -->
-                <div class="bg-black/30 p-4 rounded-xl border border-white/5">
-                    <h3 class="text-gray-300 font-bold text-sm uppercase mb-2 text-center" id="calendarMonth">Calendar</h3>
-                    <div class="calendar-grid" id="calendarGrid">
-                        <!-- Days injected via JS -->
+                <!-- Global Chat Box (New) -->
+                <div class="bg-black/30 p-4 rounded-xl border border-white/5 flex flex-col h-40">
+                    <h3 class="text-gray-300 font-bold text-sm uppercase mb-2">Global Student Chat</h3>
+                    <div id="chat-messages" class="flex-grow overflow-y-auto mb-2 custom-scrollbar pr-2">
+                        <!-- Messages Injected here -->
+                        <div class="text-gray-500 text-xs italic text-center mt-4">Connect to see messages...</div>
+                    </div>
+                    <div class="flex gap-2">
+                        <input id="chatInput" type="text" placeholder="Type a message..." class="flex-grow bg-black/50 border border-gray-700 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-blue-500" onkeydown="if(event.key === 'Enter') sendChatMessage()">
+                        <button onclick="sendChatMessage()" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded text-xs"><i class="fas fa-paper-plane"></i></button>
                     </div>
                 </div>
             </div>
-
-            <!-- Shop Section removed from main view (now in modal) -->
 
             <!-- Achievements -->
             <div>
@@ -1012,11 +1083,26 @@
             { title: "Drift Hunters", url: "https://bi6zone.vercel.app/g/drift-hunters.html" },
             { title: "Ultimate Car Sim", url: "https://bi6zone.vercel.app/g/ucds.html" },
             { title: "Idle Miner Tycoon", url: "https://bi6zone.vercel.app/g/idle-miner-tycoon.html" },
-            { title: "Idle Breakout", url: "https://idle-breakout.github.io/" }
+            { title: "Idle Breakout", url: "https://idle-breakout.github.io/" },
+            { title: "Retro Bowl", url: "https://bi6zone.vercel.app/g/retro-bowl.html" },
+            { title: "Clash Royale", url: "https://bi6zone.vercel.app/g/clash-royal.html" },
+            { title: "Gladihoppers", url: "https://bi6zone.vercel.app/g/gladihoppers.html" },
+            { title: "Physics Game", url: "https://car563.github.io/" },
+            { title: "Bowmasters", url: "https://bi6zone.vercel.app/g/bowmasters.html" },
+            { title: "Raft", url: "https://bi6zone.vercel.app/g/raft.html" },
+            { title: "Hollow Knight", url: "https://bi6zone.vercel.app/g/hollow-night.html" },
+            { title: "Draw Climber", url: "https://bi6zone.vercel.app/g/draw-climber.html" },
+            { title: "Stealth Master", url: "https://bi6zone.vercel.app/g/stealth-master.html" },
+            { title: "Schoolboy Runaway", url: "https://bi6zone.vercel.app/g/schoolboy-runaway.html" },
+            { title: "99 Nights in the Forest", url: "https://bi6zone.vercel.app/g/99nitf.html" },
+            { title: "Grow A Garden", url: "https://bi6zone.vercel.app/g/grow-a-garden.html" },
+            { title: "Redball 4", url: "https://bi6zone.vercel.app/g/redball-4.html" },
+            { title: "Google Baseball", url: "https://bi6zone.vercel.app/g/google-baseball.html" },
+            { title: "Knife Hit", url: "https://bi6zone.vercel.app/g/knife-hit.html" }
         ];
 
         // Popular games list for filtering
-        const popularGames = ["Minecraft", "Subway Surfers", "Geometry Dash", "BitLife", "Slope", "Happy Wheels", "Bloons TD 5", "Cookie Clicker", "Among Us", "1v1.lol", "Retro Bowl"];
+        const popularGames = ["Minecraft", "Subway Surfers", "Geometry Dash", "BitLife", "Slope", "Happy Wheels", "Bloons TD 5", "Cookie Clicker", "Among Us", "1v1.lol", "Retro Bowl", "Clash Royale"];
 
         let games = [];
         let favorites = [];
@@ -1030,6 +1116,9 @@
         const konamiSequence = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
         let pendingApp = null; // Store app details for password check
         let splashEnabled = true;
+        
+        // Chat unsubscribe function placeholder
+        let currentChatUnsubscribe = null;
 
         // Account Data
         let currentUser = null;
@@ -1038,8 +1127,8 @@
             { id: 'gamer', name: 'Gamer', icon: 'fa-gamepad', desc: 'Play your first game' },
             { id: 'scholar', name: 'Scholar', icon: 'fa-graduation-cap', desc: 'Use Wikipedia or Calculator' },
             { id: 'admin', name: 'Admin Access', icon: 'fa-user-shield', desc: 'Restricted.', rare: true }, 
-            { id: 'nightowl', name: 'Night Owl', icon: 'fa-moon', desc: 'Log in after 8 PM' },
-            { id: 'earlybird', name: 'Early Bird', icon: 'fa-sun', desc: 'Log in before 8 AM' },
+            { id: 'nightowl', name: 'Night Owl', icon: 'fa-moon', desc: 'Be active after 8 PM' },
+            { id: 'earlybird', name: 'Early Bird', icon: 'fa-sun', desc: 'Be active before 8 AM' },
             { id: 'artist', name: 'Artist', icon: 'fa-palette', desc: 'Change the theme color' },
             { id: 'spy', name: 'Secret Agent', icon: 'fa-user-secret', desc: 'Use the Panic Button' },
             { id: 'maestro', name: 'Maestro', icon: 'fa-music', desc: 'Open the Music Lab' },
@@ -1217,17 +1306,35 @@
             if (e.key === 'Enter') checkPassword();
         });
 
-        // --- WIKI UNBLOCKER SYSTEM ---
-        function checkWikiCode() {
-            const code = document.getElementById('wikiCodeInput').value;
-            if (code === "open sesame") {
-                launchGame('Browser', 'https://wiki.jimmyqrg.com');
-                // Optional: Clear input
-                document.getElementById('wikiCodeInput').value = "";
-                document.getElementById('wikiError').classList.add('hidden');
-            } else {
-                document.getElementById('wikiError').classList.remove('hidden');
+        // --- FIREBASE CHAT ---
+        function sendChatMessage() {
+            const input = document.getElementById('chatInput');
+            if(!input) return;
+            const text = input.value.trim();
+            if(!text || !currentUser || !window.firebaseChat) return;
+
+            // Simple profane filter
+            const badWords = ['badword', 'stupid', 'dumb', 'hate']; // Add more if needed
+            if(badWords.some(w => text.toLowerCase().includes(w))) {
+                alert("Please keep the chat clean!");
+                return;
             }
+
+            window.firebaseChat.sendMessage(text, currentUser.name);
+            input.value = "";
+        }
+
+        function loadChatMessages(msgs) {
+            const container = document.getElementById('chat-messages');
+            if(!container) return;
+            container.innerHTML = "";
+            msgs.slice(-50).forEach(msg => { // Show last 50
+                const div = document.createElement('div');
+                div.className = "chat-msg";
+                div.innerHTML = `<div class="sender">${msg.sender}</div><div>${msg.text}</div>`;
+                container.appendChild(div);
+            });
+            container.scrollTop = container.scrollHeight;
         }
 
         // --- ACCOUNT & XP SYSTEM ---
@@ -1471,11 +1578,23 @@
                 updateProfileStats();
                 renderCalendar();
                 renderAchievements();
+                renderShop(); // Load Shop
                 checkDailyLogin();
+
+                // Initialize chat listener with cleanup
+                if (window.firebaseChat && !currentChatUnsubscribe) {
+                    currentChatUnsubscribe = window.firebaseChat.listen(loadChatMessages);
+                }
             } else {
                 loginForm.classList.remove('hidden');
                 profileView.classList.add('hidden');
                 profileView.classList.remove('flex');
+                
+                // Cleanup listener on logout/view switch
+                if (currentChatUnsubscribe) {
+                    currentChatUnsubscribe();
+                    currentChatUnsubscribe = null;
+                }
             }
         }
 
@@ -1810,7 +1929,7 @@
                 "Dragons", "Fight on State", "Hail to Pitt", "Fly the L", "Roll Tech", "Go Birds", 
                 "Bleed Green", "Kelly Green", "Midnight Green", "Silver and Black", "Orange and Black", 
                 "Red and Blue", "Blue and Gold", "Cherry and White", "Navy and White", "Maroon and Gold",
-                "Alex was here", "Jackson was here", "Pavlo was here", "v1.60 is goated",
+                "Alex was here", "Jackson was here", "Pavlo was here", "v1.63 is goated",
                 "Should I add sticky notes?", "Any other ideas? tell me in the \"request app\"",
                 "What games should I add?"
             ];
@@ -2060,6 +2179,11 @@
             const canvas = document.getElementById('particle-canvas');
             const ctx = canvas.getContext('2d');
             let particles = [];
+            
+            // Prevent duplicate loops
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+            }
             
             // Mouse tracking for visualizer
             let mouseSpeed = 0;
