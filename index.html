@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Puzzle Cube Generator</title>
+    <title>67 mason</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { 
@@ -27,26 +27,12 @@
             box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
         }
         
-        /* Custom scrollbar for piece selector */
-        .piece-selector::-webkit-scrollbar {
-            height: 8px;
-        }
-        .piece-selector::-webkit-scrollbar-track {
-            background: #374151; 
-            border-radius: 4px;
-        }
-        .piece-selector::-webkit-scrollbar-thumb {
-            background: #6b7280; 
-            border-radius: 4px;
-        }
-        .piece-selector::-webkit-scrollbar-thumb:hover {
-            background: #9ca3af; 
-        }
+        .piece-selector::-webkit-scrollbar { height: 8px; }
+        .piece-selector::-webkit-scrollbar-track { background: #374151; border-radius: 4px; }
+        .piece-selector::-webkit-scrollbar-thumb { background: #6b7280; border-radius: 4px; }
+        .piece-selector::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
 
-        #loading-overlay {
-            display: none;
-            backdrop-filter: blur(4px);
-        }
+        #loading-overlay { display: none; backdrop-filter: blur(4px); }
         .spinner {
             border: 4px solid rgba(255,255,255,0.1);
             border-left-color: #ef4444;
@@ -57,15 +43,10 @@
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* Custom Range Slider */
-        input[type=range] {
-            -webkit-appearance: none;
-            background: transparent;
-        }
+        input[type=range] { -webkit-appearance: none; background: transparent; }
         input[type=range]::-webkit-slider-thumb {
             -webkit-appearance: none;
-            height: 18px;
-            width: 18px;
+            height: 18px; width: 18px;
             border-radius: 50%;
             background: #3b82f6;
             cursor: pointer;
@@ -73,19 +54,69 @@
             box-shadow: 0 0 10px rgba(59, 130, 246, 0.8);
             transition: transform 0.1s;
         }
-        input[type=range]::-webkit-slider-thumb:hover {
-            transform: scale(1.2);
-        }
+        input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
         input[type=range]::-webkit-slider-runnable-track {
-            width: 100%;
-            height: 4px;
-            cursor: pointer;
-            background: #4b5563;
-            border-radius: 2px;
+            width: 100%; height: 4px; cursor: pointer;
+            background: #4b5563; border-radius: 2px;
+        }
+
+        /* Save slot styles */
+        .save-slot {
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .save-slot:hover { transform: translateY(-1px); }
+        .save-slot.occupied { border-color: #4b5563; }
+        .save-slot.empty { border-color: #374151; border-style: dashed; }
+
+        /* Toast notification */
+        #toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(80px);
+            background: #1f2937;
+            border: 1px solid #374151;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            z-index: 1000;
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            white-space: nowrap;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        }
+        #toast.show { transform: translateX(-50%) translateY(0); }
+        #toast.success { border-color: #10b981; color: #6ee7b7; }
+        #toast.error { border-color: #ef4444; color: #fca5a5; }
+        #toast.info { border-color: #3b82f6; color: #93c5fd; }
+
+        /* Piece color indicators in slots */
+        .piece-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+
+        /* Delete confirmation overlay inside a slot */
+        .delete-confirm-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.93);
+            backdrop-filter: blur(2px);
+            border-radius: 0.5rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 12px;
+            animation: fadeInScale 0.15s ease;
+        }
+        @keyframes fadeInScale {
+            from { opacity: 0; transform: scale(0.95); }
+            to   { opacity: 1; transform: scale(1); }
         }
     </style>
     
-    <!-- Three.js Import Map -->
     <script type="importmap">
         {
             "imports": {
@@ -113,15 +144,8 @@
                 <h2 class="text-lg font-semibold text-gray-300">Piece Inspector</h2>
                 <span class="text-xs text-gray-500 bg-gray-800 px-2 py-1 rounded">Drag to rotate</span>
             </div>
-            
-            <!-- Piece Selectors -->
-            <div id="piece-selector" class="piece-selector flex gap-2 overflow-x-auto pb-2 shrink-0">
-                <!-- Buttons injected via JS -->
-            </div>
-
-            <div id="left-viewer" class="viewer-container flex-1 min-h-[300px] cursor-move relative">
-                <!-- ThreeJS Canvas goes here -->
-            </div>
+            <div id="piece-selector" class="piece-selector flex gap-2 overflow-x-auto pb-2 shrink-0"></div>
+            <div id="left-viewer" class="viewer-container flex-1 min-h-[300px] cursor-move relative"></div>
         </div>
 
         <!-- Right Panel: Full Assembly Viewer -->
@@ -130,29 +154,52 @@
                 <h2 class="text-lg font-semibold text-gray-300">Assembly Viewer</h2>
                 <span class="text-xs text-gray-500 bg-gray-800/80 backdrop-blur-sm px-2 py-1 rounded">Drag to rotate</span>
             </div>
-
-            <!-- Explode Slider -->
             <div class="flex items-center gap-4 shrink-0 bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 p-3 rounded-lg">
                 <label for="explode-slider" class="text-sm font-medium text-gray-300 whitespace-nowrap">Explode View:</label>
                 <input type="range" id="explode-slider" min="0" max="2" step="0.05" value="0" class="w-full accent-blue-500">
             </div>
-
-            <div id="right-viewer" class="viewer-container flex-1 min-h-[300px] cursor-move relative">
-                <!-- ThreeJS Canvas goes here -->
-            </div>
+            <div id="right-viewer" class="viewer-container flex-1 min-h-[300px] cursor-move relative"></div>
         </div>
 
     </main>
 
     <!-- Bottom Controls -->
-    <footer class="bg-transparent backdrop-blur-sm border-t border-gray-800/50 p-6 shrink-0 flex flex-col items-center gap-6 shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.5)] z-10 overflow-y-auto max-h-[35rem]">
+    <footer class="bg-transparent backdrop-blur-sm border-t border-gray-800/50 p-6 shrink-0 flex flex-col items-center gap-6 shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.5)] z-10 overflow-y-auto max-h-[45rem]">
         <div class="w-full max-w-3xl flex flex-col gap-6">
-            
-            <!-- Viewing Settings Section -->
+
+            <!-- ════ SAVE / LOAD SECTION ════ -->
+            <section>
+                <h3 class="text-sm font-bold text-gray-400 mb-3 uppercase tracking-wider border-b border-gray-700/50 pb-1 flex items-center gap-2">
+                    <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+                    Save / Load Puzzles
+                    <span class="ml-auto text-xs font-normal text-gray-600 normal-case tracking-normal">Saved to your browser — persists across sessions</span>
+                </h3>
+
+                <!-- Save Slots Grid -->
+                <div id="save-slots" class="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full">
+                    <!-- Injected by JS -->
+                </div>
+
+                <!-- Action row -->
+                <div class="flex gap-3 mt-3">
+                    <button id="btn-save-current" class="flex-1 bg-emerald-700/80 hover:bg-emerald-600 active:scale-95 text-white font-bold py-2.5 px-4 rounded-lg transition-all duration-200 shadow-lg flex items-center justify-center gap-2 border border-emerald-500/30 hover:border-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed" disabled>
+                        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+                        Save Current Puzzle
+                    </button>
+                </div>
+
+                <!-- Save slot name picker -->
+                <div id="save-name-picker" class="hidden mt-3 flex gap-3 items-center bg-gray-800/60 border border-gray-700 rounded-lg p-3">
+                    <label class="text-sm text-gray-400 whitespace-nowrap">Save to slot:</label>
+                    <div id="slot-picker-buttons" class="flex gap-2 flex-wrap flex-1"></div>
+                    <button id="btn-cancel-save" class="text-gray-500 hover:text-gray-300 text-sm px-3 py-1.5 rounded border border-gray-700 hover:border-gray-500 transition-colors">Cancel</button>
+                </div>
+            </section>
+
+            <!-- Viewing Settings -->
             <section>
                 <h3 class="text-sm font-bold text-gray-400 mb-3 uppercase tracking-wider border-b border-gray-700/50 pb-1">Viewing Settings</h3>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full justify-center">
-                    <!-- Auto-Rotate Toggle -->
                     <div class="flex items-center justify-center w-full bg-gray-800/50 backdrop-blur-sm border border-gray-600/50 py-2.5 px-4 rounded-lg shadow-sm">
                         <label class="inline-flex items-center cursor-pointer w-full justify-center">
                             <input type="checkbox" id="auto-rotate-toggle" class="sr-only peer" checked>
@@ -160,8 +207,6 @@
                             <span class="ms-3 text-sm font-bold text-gray-300">Auto-Rotate Models</span>
                         </label>
                     </div>
-                    
-                    <!-- Reset View Button -->
                     <button id="btn-reset-view" class="w-full bg-gray-700 hover:bg-gray-600 active:scale-95 text-white font-bold py-2.5 px-4 rounded-lg transition-all duration-200 shadow-sm flex items-center justify-center gap-2 border border-gray-500 hover:border-gray-400">
                         <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
                         Reset To Rotational Origin
@@ -169,7 +214,7 @@
                 </div>
             </section>
 
-            <!-- Generation Section -->
+            <!-- Generation -->
             <section>
                 <h3 class="text-sm font-bold text-gray-400 mb-3 uppercase tracking-wider border-b border-gray-700 pb-1">Generation</h3>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full justify-center">
@@ -192,7 +237,6 @@
                 </div>
             </section>
             
-            <!-- Collapsible Disclaimer -->
             <details class="mt-2 bg-gray-800/50 backdrop-blur-sm rounded-lg w-full text-left border border-gray-700/50 group cursor-pointer transition-all">
                 <summary class="text-sm font-bold text-gray-200 p-4 select-none outline-none flex justify-between items-center hover:text-white">
                     <span>Disclaimer: Generation Constraints</span>
@@ -201,9 +245,9 @@
                 <div class="px-4 pb-4 border-t border-gray-700/50 pt-3 cursor-default">
                     <ul class="list-disc pl-5 text-xs text-gray-400 space-y-1.5">
                         <li><strong>Cube Size:</strong> The puzzle always forms a perfect 3x3x3 solid cube (27 total blocks).</li>
-                        <li><strong>Piece Count:</strong> The puzzle is strictly generated with exactly 5 or 6 distinct interlocking pieces, depending on your selection.</li>
-                        <li><strong>Minimum Size:</strong> Every piece is strictly guaranteed to have <strong>at least 3 blocks</strong> to ensure complexity.</li>
-                        <li><strong>True 3D (Red Buttons):</strong> Generates pieces that are impossible to model using a single 2D sketch + CADD extrusion. They are irregular and non-uniform across all 3 dimensions (X, Y, and Z).</li>
+                        <li><strong>Piece Count:</strong> The puzzle is strictly generated with exactly 5 or 6 distinct interlocking pieces.</li>
+                        <li><strong>Minimum Size:</strong> Every piece is strictly guaranteed to have <strong>at least 3 blocks</strong>.</li>
+                        <li><strong>True 3D (Red Buttons):</strong> Generates pieces that are impossible to model using a single 2D sketch + CADD extrusion.</li>
                     </ul>
                 </div>
             </details>
@@ -217,346 +261,395 @@
         <p class="text-sm text-gray-400 max-w-sm text-center">Finding a combination where all pieces meet the strict constraints. This requires searching thousands of possible geometries.</p>
     </div>
 
-    <!-- Application Script -->
+    <!-- Toast -->
+    <div id="toast"></div>
+
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-        // --- UI Elements ---
+        // ─── Constants ───────────────────────────────────────────────────────────
+        const PIECE_COLORS = [0xef4444, 0x3b82f6, 0x10b981, 0xf59e0b, 0x8b5cf6, 0xec4899];
+        const COLOR_NAMES  = ['Red', 'Blue', 'Green', 'Yellow', 'Purple', 'Pink'];
+        const STORAGE_KEY  = 'puzzle3d_saves';
+        const MAX_SLOTS    = 3;
+
+        // ─── UI refs ─────────────────────────────────────────────────────────────
         const ui = {
-            btnStandard5: document.getElementById('btn-standard-5'),
-            btnTrue3d5: document.getElementById('btn-true3d-5'),
-            btnStandard6: document.getElementById('btn-standard-6'),
-            btnTrue3d6: document.getElementById('btn-true3d-6'),
-            explodeSlider: document.getElementById('explode-slider'),
-            leftViewer: document.getElementById('left-viewer'),
-            rightViewer: document.getElementById('right-viewer'),
-            pieceSelector: document.getElementById('piece-selector'),
+            btnStandard5:   document.getElementById('btn-standard-5'),
+            btnTrue3d5:     document.getElementById('btn-true3d-5'),
+            btnStandard6:   document.getElementById('btn-standard-6'),
+            btnTrue3d6:     document.getElementById('btn-true3d-6'),
+            explodeSlider:  document.getElementById('explode-slider'),
+            leftViewer:     document.getElementById('left-viewer'),
+            rightViewer:    document.getElementById('right-viewer'),
+            pieceSelector:  document.getElementById('piece-selector'),
             loadingOverlay: document.getElementById('loading-overlay'),
             autoRotateToggle: document.getElementById('auto-rotate-toggle'),
-            btnResetView: document.getElementById('btn-reset-view')
+            btnResetView:   document.getElementById('btn-reset-view'),
+            saveSlots:      document.getElementById('save-slots'),
+            btnSaveCurrent: document.getElementById('btn-save-current'),
+
+            saveNamePicker: document.getElementById('save-name-picker'),
+            slotPickerBtns: document.getElementById('slot-picker-buttons'),
+            btnCancelSave:  document.getElementById('btn-cancel-save'),
+            toast:          document.getElementById('toast'),
         };
 
-        // --- Colors for Pieces ---
-        const PIECE_COLORS = [
-            0xef4444, // Red
-            0x3b82f6, // Blue
-            0x10b981, // Green
-            0xf59e0b, // Yellow
-            0x8b5cf6, // Purple
-            0xec4899  // Pink
-        ];
-
-        // --- State ---
-        let currentPuzzle = null;
+        // ─── State ────────────────────────────────────────────────────────────────
+        let currentPuzzle    = null;
         let selectedPieceIdx = 0;
-        let leftSceneData = null;
-        let rightSceneData = null;
+        let leftSceneData    = null;
+        let rightSceneData   = null;
         let rightPieceGroups = [];
+        let toastTimer       = null;
 
-        // --- Three.js Setup Boilerplate ---
+        // ─── Toast ────────────────────────────────────────────────────────────────
+        function showToast(msg, type = 'info') {
+            ui.toast.textContent = msg;
+            ui.toast.className = `show ${type}`;
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => { ui.toast.className = type; }, 2800);
+        }
+
+        // ─── localStorage helpers ─────────────────────────────────────────────────
+        function loadAllSaves() {
+            try {
+                return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+            } catch { return {}; }
+        }
+
+        function writeSaves(saves) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(saves));
+        }
+
+        function savePuzzleToSlot(slotIdx) {
+            if (!currentPuzzle) return;
+            const saves = loadAllSaves();
+            saves[slotIdx] = {
+                puzzle:    currentPuzzle,
+                pieceCount: currentPuzzle.length,
+                savedAt:   new Date().toLocaleString(),
+                label:     `Slot ${slotIdx + 1}`
+            };
+            writeSaves(saves);
+            renderSaveSlots();
+            showToast(`✅ Puzzle saved to Slot ${slotIdx + 1}`, 'success');
+            ui.saveNamePicker.classList.add('hidden');
+        }
+
+        function loadPuzzleFromSlot(slotIdx) {
+            const saves = loadAllSaves();
+            const entry = saves[slotIdx];
+            if (!entry) return;
+            currentPuzzle = entry.puzzle;
+            buildUI(currentPuzzle);
+            renderAssembly();
+            selectPiece(0);
+            ui.btnSaveCurrent.disabled = false;
+            showToast(`📂 Loaded puzzle from Slot ${slotIdx + 1} (saved ${entry.savedAt})`, 'info');
+        }
+
+        function deleteSaveSlot(slotIdx) {
+            const saves = loadAllSaves();
+            delete saves[slotIdx];
+            writeSaves(saves);
+            renderSaveSlots();
+            showToast(`🗑️ Slot ${slotIdx + 1} cleared`, 'info');
+        }
+
+        // ─── Render Save Slots UI ─────────────────────────────────────────────────
+        function renderSaveSlots() {
+            const saves = loadAllSaves();
+            ui.saveSlots.innerHTML = '';
+
+            for (let i = 0; i < MAX_SLOTS; i++) {
+                const entry = saves[i];
+                const slot  = document.createElement('div');
+
+                if (entry) {
+                    // Occupied slot
+                    const dots = entry.puzzle.map((_, ci) =>
+                        `<span class="piece-dot" style="background:#${PIECE_COLORS[ci % PIECE_COLORS.length].toString(16).padStart(6,'0')}"></span>`
+                    ).join('');
+
+                    slot.className = 'save-slot occupied bg-gray-800/70 border border-gray-600 rounded-lg p-3 flex flex-col gap-2';
+                    slot.innerHTML = `
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-gray-300">Slot ${i + 1}</span>
+                            <span class="text-xs text-gray-500">${entry.pieceCount}-piece</span>
+                        </div>
+                        <div class="flex gap-1.5 items-center">${dots}</div>
+                        <div class="text-xs text-gray-500 truncate">${entry.savedAt}</div>
+                        <div class="flex gap-2 mt-1">
+                            <button class="btn-load-slot flex-1 bg-blue-700/60 hover:bg-blue-600 text-white text-xs font-bold py-1.5 px-2 rounded transition-colors flex items-center justify-center gap-1" data-slot="${i}">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                                Load
+                            </button>
+                            <button class="btn-delete-slot bg-gray-700 hover:bg-red-800/60 text-gray-400 hover:text-red-300 text-xs font-bold py-1.5 px-2 rounded transition-colors" data-slot="${i}" title="Delete this save">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    // Empty slot
+                    slot.className = 'save-slot empty bg-gray-800/30 border border-gray-700 rounded-lg p-3 flex flex-col items-center justify-center gap-1 opacity-50';
+                    slot.innerHTML = `
+                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4"/></svg>
+                        <span class="text-xs text-gray-600 font-medium">Slot ${i + 1} — Empty</span>
+                    `;
+                }
+
+                ui.saveSlots.appendChild(slot);
+            }
+
+            // Wire load buttons
+            document.querySelectorAll('.btn-load-slot').forEach(btn => {
+                btn.addEventListener('click', () => loadPuzzleFromSlot(parseInt(btn.dataset.slot)));
+            });
+
+            // Wire delete buttons — show inline confirmation overlay
+            document.querySelectorAll('.btn-delete-slot').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const slotIdx = parseInt(btn.dataset.slot);
+                    const slotEl  = btn.closest('.save-slot');
+
+                    // Don't double-add if already confirming
+                    if (slotEl.querySelector('.delete-confirm-overlay')) return;
+
+                    const overlay = document.createElement('div');
+                    overlay.className = 'delete-confirm-overlay';
+                    overlay.innerHTML = `
+                        <p class="text-xs font-bold text-red-300 text-center leading-snug">Delete Slot ${slotIdx + 1}?<br><span class="text-gray-400 font-normal">This cannot be undone.</span></p>
+                        <div class="flex gap-2">
+                            <button class="confirm-delete-yes bg-red-700 hover:bg-red-600 text-white text-xs font-bold py-1.5 px-4 rounded transition-colors border border-red-500">Delete</button>
+                            <button class="confirm-delete-no bg-gray-700 hover:bg-gray-600 text-gray-300 text-xs font-bold py-1.5 px-3 rounded transition-colors border border-gray-600">Cancel</button>
+                        </div>
+                    `;
+
+                    overlay.querySelector('.confirm-delete-yes').addEventListener('click', () => {
+                        deleteSaveSlot(slotIdx);
+                    });
+                    overlay.querySelector('.confirm-delete-no').addEventListener('click', () => {
+                        overlay.style.animation = 'none';
+                        overlay.style.opacity = '0';
+                        overlay.style.transform = 'scale(0.95)';
+                        overlay.style.transition = 'opacity 0.12s, transform 0.12s';
+                        setTimeout(() => overlay.remove(), 120);
+                    });
+
+                    slotEl.appendChild(overlay);
+                });
+            });
+        }
+
+        // ─── Save flow ────────────────────────────────────────────────────────────
+        ui.btnSaveCurrent.addEventListener('click', () => {
+            // Build the slot picker inline
+            ui.slotPickerBtns.innerHTML = '';
+            const saves = loadAllSaves();
+            for (let i = 0; i < MAX_SLOTS; i++) {
+                const btn = document.createElement('button');
+                const occupied = !!saves[i];
+                btn.className = `text-xs font-bold py-1.5 px-3 rounded border transition-colors ${
+                    occupied
+                        ? 'bg-amber-900/40 border-amber-600 text-amber-300 hover:bg-amber-800/60'
+                        : 'bg-emerald-900/40 border-emerald-600 text-emerald-300 hover:bg-emerald-800/60'
+                }`;
+                btn.textContent = occupied ? `Slot ${i + 1} (overwrite)` : `Slot ${i + 1} (empty)`;
+                btn.addEventListener('click', () => savePuzzleToSlot(i));
+                ui.slotPickerBtns.appendChild(btn);
+            }
+            ui.saveNamePicker.classList.remove('hidden');
+        });
+
+        ui.btnCancelSave.addEventListener('click', () => {
+            ui.saveNamePicker.classList.add('hidden');
+        });
+
+        // ─── Three.js setup ───────────────────────────────────────────────────────
         function initScene(container) {
-            const scene = new THREE.Scene();
-            
-            const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
-            // Set initial camera to perfect isometric view (Top, Front, Right)
+            const scene    = new THREE.Scene();
+            const camera   = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
             camera.position.set(5, 5, 5);
-            
+
             const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
             renderer.setSize(container.clientWidth, container.clientHeight);
             renderer.setPixelRatio(window.devicePixelRatio);
-            
-            // Premium rendering settings
             renderer.shadowMap.enabled = true;
-            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.shadowMap.type    = THREE.PCFSoftShadowMap;
+            renderer.toneMapping       = THREE.ACESFilmicToneMapping;
             renderer.toneMappingExposure = 1.0;
-            
             container.appendChild(renderer.domElement);
-            
+
             const controls = new OrbitControls(camera, renderer.domElement);
-            controls.enableDamping = true;
-            controls.dampingFactor = 0.05;
-            controls.autoRotate = true;
+            controls.enableDamping  = true;
+            controls.dampingFactor  = 0.05;
+            controls.autoRotate     = true;
             controls.autoRotateSpeed = 4.0;
 
-            // Ambient/Hemisphere Light for softer base illumination
             const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.6);
             hemiLight.position.set(0, 20, 0);
             scene.add(hemiLight);
 
-            // Main Key Light with shadows
             const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
             dirLight.position.set(5, 10, 7);
             dirLight.castShadow = true;
-            dirLight.shadow.mapSize.width = 1024;
-            dirLight.shadow.mapSize.height = 1024;
+            dirLight.shadow.mapSize.set(1024, 1024);
             dirLight.shadow.camera.near = 0.5;
-            dirLight.shadow.camera.far = 25;
-            dirLight.shadow.bias = -0.001;
+            dirLight.shadow.camera.far  = 25;
+            dirLight.shadow.bias        = -0.001;
             scene.add(dirLight);
 
-            // Subtle Rim Light
-            const rimLight = new THREE.DirectionalLight(0xaaccff, 0.5);
-            rimLight.position.set(-5, 5, -5);
-            scene.add(rimLight);
+            scene.add(new THREE.DirectionalLight(0xaaccff, 0.5).position.set(-5, 5, -5) && (() => { const l = new THREE.DirectionalLight(0xaaccff, 0.5); l.position.set(-5,5,-5); return l; })());
 
-            // Subtle Grid Helper for a "CAD/Engineering" feel
-            const gridHelper = new THREE.GridHelper(10, 10, 0x444444, 0x222222);
-            gridHelper.position.y = -3;
-            scene.add(gridHelper);
+            const grid = new THREE.GridHelper(10, 10, 0x444444, 0x222222);
+            grid.position.y = -3;
+            scene.add(grid);
 
             return { scene, camera, renderer, controls, container };
         }
 
         function resizeScenes() {
             [leftSceneData, rightSceneData].forEach(data => {
-                if(!data) return;
+                if (!data) return;
                 data.camera.aspect = data.container.clientWidth / data.container.clientHeight;
                 data.camera.updateProjectionMatrix();
                 data.renderer.setSize(data.container.clientWidth, data.container.clientHeight);
             });
         }
-
         window.addEventListener('resize', resizeScenes);
 
         function animate() {
             requestAnimationFrame(animate);
-            if(leftSceneData) {
-                leftSceneData.controls.update();
-                leftSceneData.renderer.render(leftSceneData.scene, leftSceneData.camera);
-            }
-            if(rightSceneData) {
-                rightSceneData.controls.update();
-                rightSceneData.renderer.render(rightSceneData.scene, rightSceneData.camera);
-            }
+            leftSceneData?.controls.update();
+            leftSceneData?.renderer.render(leftSceneData.scene, leftSceneData.camera);
+            rightSceneData?.controls.update();
+            rightSceneData?.renderer.render(rightSceneData.scene, rightSceneData.camera);
         }
 
-        // --- Initialization ---
-        leftSceneData = initScene(ui.leftViewer);
+        leftSceneData  = initScene(ui.leftViewer);
         rightSceneData = initScene(ui.rightViewer);
         animate();
 
-        // --- Puzzle Logic ---
-
-        // Converts a flat index (0-26) to 3D coords
+        // ─── Puzzle Logic ─────────────────────────────────────────────────────────
         function idxToCoords(idx) {
-            return {
-                x: idx % 3,
-                y: Math.floor(idx / 3) % 3,
-                z: Math.floor(idx / 9)
-            };
+            return { x: idx % 3, y: Math.floor(idx / 3) % 3, z: Math.floor(idx / 9) };
         }
 
-        // Check if a piece geometry is a simple extrusion
-        // A piece is an extrusion if it has identical cross-sections along ANY axis (X, Y, or Z).
         function isPieceExtrudable(pieceCoords) {
-            if (pieceCoords.length < 4) return true; // Too small to be True 3D
-
+            if (pieceCoords.length < 4) return true;
             const bounds = ['x', 'y', 'z'].map(axis => {
                 let vals = pieceCoords.map(p => p[axis]);
                 return { min: Math.min(...vals), max: Math.max(...vals) };
             });
-
-            // If it's flat in any dimension, it's easily an extrusion of a 2D sketch
-            if (bounds[0].min === bounds[0].max ||
-                bounds[1].min === bounds[1].max ||
-                bounds[2].min === bounds[2].max) {
-                return true;
-            }
-
-            // For each axis, verify if ALL slices are exactly identical
+            if (bounds[0].min === bounds[0].max || bounds[1].min === bounds[1].max || bounds[2].min === bounds[2].max) return true;
             const checkAxis = (axisIdx, axisName) => {
-                let min = bounds[axisIdx].min;
-                let max = bounds[axisIdx].max;
+                let min = bounds[axisIdx].min, max = bounds[axisIdx].max;
                 let firstSlice = pieceCoords.filter(p => p[axisName] === min);
-
                 for (let v = min + 1; v <= max; v++) {
                     let slice = pieceCoords.filter(p => p[axisName] === v);
-                    // Fast rejection: different block counts in slice
-                    if (slice.length !== firstSlice.length) return false; 
-
-                    // Deep compare: normalize slice coordinates to 0 on the axis
-                    let s1 = firstSlice.map(p => ({x: p.x, y: p.y, z: p.z}));
-                    let s2 = slice.map(p => ({x: p.x, y: p.y, z: p.z}));
-                    s1.forEach(p => p[axisName] = 0);
-                    s2.forEach(p => p[axisName] = 0);
-
-                    // Sort to match arrays
-                    const sortFn = (a, b) => a.x !== b.x ? a.x - b.x : (a.y !== b.y ? a.y - b.y : a.z - b.z);
-                    s1.sort(sortFn);
-                    s2.sort(sortFn);
-
-                    // Verify match
+                    if (slice.length !== firstSlice.length) return false;
+                    let s1 = firstSlice.map(p => ({...p})), s2 = slice.map(p => ({...p}));
+                    s1.forEach(p => p[axisName] = 0); s2.forEach(p => p[axisName] = 0);
+                    const sf = (a, b) => a.x !== b.x ? a.x-b.x : a.y !== b.y ? a.y-b.y : a.z-b.z;
+                    s1.sort(sf); s2.sort(sf);
                     for (let i = 0; i < s1.length; i++) {
-                        if (s1[i].x !== s2[i].x || s1[i].y !== s2[i].y || s1[i].z !== s2[i].z) {
-                            return false; // Mismatch found -> NOT an extrusion on this axis
-                        }
+                        if (s1[i].x !== s2[i].x || s1[i].y !== s2[i].y || s1[i].z !== s2[i].z) return false;
                     }
                 }
-                return true; // All slices perfectly matched!
+                return true;
             };
-
-            // If it's extrudable along X, Y, or Z, then it fails the "True 3D" check
-            if (checkAxis(0, 'x')) return true;
-            if (checkAxis(1, 'y')) return true;
-            if (checkAxis(2, 'z')) return true;
-
-            return false; // Not extrudable! It is True 3D.
+            if (checkAxis(0,'x') || checkAxis(1,'y') || checkAxis(2,'z')) return true;
+            return false;
         }
 
-        // Fast randomized flood fill for 3x3x3 grid
         function tryGenerateFast(pieceCount) {
             let grid = new Int8Array(27);
             let pieces = Array.from({length: pieceCount}, () => []);
-            let empty = [];
-            for(let i=0; i<27; i++) empty.push(i);
-
-            // Shuffle starting pool
-            for(let i=26; i>0; i--) {
-                let j = Math.floor(Math.random()*(i+1));
-                let t = empty[i]; empty[i] = empty[j]; empty[j] = t;
+            let empty = Array.from({length: 27}, (_, i) => i);
+            for (let i = 26; i > 0; i--) {
+                let j = Math.floor(Math.random() * (i+1));
+                [empty[i], empty[j]] = [empty[j], empty[i]];
             }
-
-            // Seed pieces
-            for(let i=0; i<pieceCount; i++) {
+            for (let i = 0; i < pieceCount; i++) {
                 let cell = empty.pop();
                 grid[cell] = i + 1;
                 pieces[i].push(cell);
             }
-
             let sizes = new Array(pieceCount).fill(1);
-            let emptyCount = 27 - pieceCount;
-            let stuck = false;
-
-            while(emptyCount > 0 && !stuck) {
-                // Pick a piece to grow, heavily biasing smaller ones to balance sizes
+            let emptyCount = 27 - pieceCount, stuck = false;
+            while (emptyCount > 0 && !stuck) {
                 let pieceOrder = Array.from({length: pieceCount}, (_, i) => i).sort((a,b) => sizes[a] - sizes[b] + (Math.random()*2-1));
                 let grew = false;
-
-                for(let pIdx of pieceOrder) {
+                for (let pIdx of pieceOrder) {
                     let adj = [];
-                    for(let cell of pieces[pIdx]) {
-                        let x = cell % 3;
-                        let y = Math.floor(cell / 3) % 3;
-                        let z = Math.floor(cell / 9);
-
-                        if(x>0 && grid[cell-1]===0) adj.push(cell-1);
-                        if(x<2 && grid[cell+1]===0) adj.push(cell+1);
-                        if(y>0 && grid[cell-3]===0) adj.push(cell-3);
-                        if(y<2 && grid[cell+3]===0) adj.push(cell+3);
-                        if(z>0 && grid[cell-9]===0) adj.push(cell-9);
-                        if(z<2 && grid[cell+9]===0) adj.push(cell+9);
+                    for (let cell of pieces[pIdx]) {
+                        let x = cell % 3, y = Math.floor(cell/3) % 3, z = Math.floor(cell/9);
+                        if (x>0 && grid[cell-1]===0) adj.push(cell-1);
+                        if (x<2 && grid[cell+1]===0) adj.push(cell+1);
+                        if (y>0 && grid[cell-3]===0) adj.push(cell-3);
+                        if (y<2 && grid[cell+3]===0) adj.push(cell+3);
+                        if (z>0 && grid[cell-9]===0) adj.push(cell-9);
+                        if (z<2 && grid[cell+9]===0) adj.push(cell+9);
                     }
-                    if(adj.length > 0) {
+                    if (adj.length > 0) {
                         let pick = adj[Math.floor(Math.random()*adj.length)];
-                        grid[pick] = pIdx + 1;
-                        pieces[pIdx].push(pick);
-                        sizes[pIdx]++;
-                        emptyCount--;
-                        grew = true;
-                        break; // Grow 1 block, then re-evaluate
+                        grid[pick] = pIdx + 1; pieces[pIdx].push(pick); sizes[pIdx]++; emptyCount--; grew = true; break;
                     }
                 }
-                if(!grew) stuck = true;
+                if (!grew) stuck = true;
             }
             if (stuck) return null;
-            
-            // Validate constraints: Ensure every piece is at least 3 blocks
-            for (let s of sizes) {
-                if (s < 3) return null; // Discard and try again if any piece is under 3 blocks
-            }
-            
-            // Map flat indices back to 3D coords
+            for (let s of sizes) if (s < 3) return null;
             return pieces.map(pieceArray => pieceArray.map(idxToCoords));
         }
 
-        // Generator loop
         async function generatePuzzle(requireTrue3D, pieceCount) {
             ui.loadingOverlay.style.display = 'flex';
-            
-            // Small delay to let the UI update the loading screen
             await new Promise(res => setTimeout(res, 50));
-
-            let maxChunks = 400; // Increased attempts slightly to account for the new strict sizing constraints
-            let attemptsPerChunk = 5000;
             let foundPieces = null;
-
-            for(let chunk=0; chunk<maxChunks; chunk++) {
-                for(let i=0; i<attemptsPerChunk; i++) {
+            outer: for (let chunk = 0; chunk < 400; chunk++) {
+                for (let i = 0; i < 5000; i++) {
                     let pieces = tryGenerateFast(pieceCount);
-                    if (!pieces) continue; // Grid got stuck, void left over, or piece was < 3 blocks
-
+                    if (!pieces) continue;
                     if (requireTrue3D) {
-                        let allTrue3D = true;
-                        for(let p of pieces) {
-                            if (isPieceExtrudable(p)) {
-                                allTrue3D = false;
-                                break;
-                            }
-                        }
-                        if (allTrue3D) {
-                            foundPieces = pieces;
-                            break;
-                        }
-                    } else {
-                        foundPieces = pieces;
-                        break;
-                    }
+                        if (pieces.every(p => !isPieceExtrudable(p))) { foundPieces = pieces; break outer; }
+                    } else { foundPieces = pieces; break outer; }
                 }
-
-                if (foundPieces) break;
-                // Yield thread
                 await new Promise(res => setTimeout(res, 0));
             }
-
             ui.loadingOverlay.style.display = 'none';
-
             if (foundPieces) {
                 currentPuzzle = foundPieces;
                 buildUI(foundPieces);
                 renderAssembly();
                 selectPiece(0);
+                ui.btnSaveCurrent.disabled = false;
+                showToast(`🎲 New ${pieceCount}-piece ${requireTrue3D ? 'True 3D' : 'Standard'} puzzle generated!`, 'success');
             } else {
-                alert("Failed to find a configuration matching the criteria within the time limit. Please try again.");
+                alert("Failed to find a configuration. Please try again.");
             }
         }
 
-        // --- Rendering Logic ---
-
-        // Generates a Three.js Group for a given piece definition
+        // ─── Rendering ────────────────────────────────────────────────────────────
         function createPieceMesh(pieceCoords, colorHex) {
-            const group = new THREE.Group();
-            
-            const geo = new THREE.BoxGeometry(1, 1, 1);
-            
-            // Glossy plastic material for professional look
-            const mat = new THREE.MeshPhysicalMaterial({ 
-                color: colorHex,
-                metalness: 0.1,
-                roughness: 0.3,
-                clearcoat: 0.8,
-                clearcoatRoughness: 0.2,
-                polygonOffset: true,
-                polygonOffsetFactor: 1, 
-                polygonOffsetUnits: 1
+            const group  = new THREE.Group();
+            const geo    = new THREE.BoxGeometry(1, 1, 1);
+            const mat    = new THREE.MeshPhysicalMaterial({
+                color: colorHex, metalness: 0.1, roughness: 0.3,
+                clearcoat: 0.8, clearcoatRoughness: 0.2,
+                polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1
             });
-            
             const edgeGeo = new THREE.EdgesGeometry(geo);
             const edgeMat = new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 2, transparent: true, opacity: 0.7 });
-
             pieceCoords.forEach(coord => {
-                const mesh = new THREE.Mesh(geo, mat);
+                const mesh  = new THREE.Mesh(geo, mat);
                 mesh.position.set(coord.x, coord.y, coord.z);
-                mesh.castShadow = true;
-                mesh.receiveShadow = true;
-                
-                const edges = new THREE.LineSegments(edgeGeo, edgeMat);
-                mesh.add(edges);
-
+                mesh.castShadow = mesh.receiveShadow = true;
+                mesh.add(new THREE.LineSegments(edgeGeo, edgeMat));
                 group.add(mesh);
             });
-
             return group;
         }
 
@@ -564,7 +657,7 @@
             ui.pieceSelector.innerHTML = '';
             pieces.forEach((p, idx) => {
                 const btn = document.createElement('button');
-                btn.className = `shrink-0 px-4 py-2 rounded-md font-bold text-sm shadow opacity-60 hover:opacity-100 transition-opacity`;
+                btn.className = 'shrink-0 px-4 py-2 rounded-md font-bold text-sm shadow opacity-60 hover:opacity-100 transition-opacity';
                 btn.style.backgroundColor = '#' + PIECE_COLORS[idx].toString(16).padStart(6, '0');
                 btn.style.color = '#ffffff';
                 btn.innerText = `Piece ${idx + 1}`;
@@ -575,146 +668,91 @@
 
         function selectPiece(idx) {
             selectedPieceIdx = idx;
-            
-            // Update UI
             Array.from(ui.pieceSelector.children).forEach((btn, i) => {
-                btn.style.opacity = (i === idx) ? '1' : '0.5';
-                btn.style.transform = (i === idx) ? 'scale(1.05)' : 'scale(1)';
+                btn.style.opacity   = i === idx ? '1' : '0.5';
+                btn.style.transform = i === idx ? 'scale(1.05)' : 'scale(1)';
             });
-
-            // Update Left Viewer
-            // Clear existing
-            while(leftSceneData.scene.children.length > 3) { // keep lights
+            while (leftSceneData.scene.children.length > 3)
                 leftSceneData.scene.remove(leftSceneData.scene.children[leftSceneData.scene.children.length - 1]);
-            }
 
             const pieceCoords = currentPuzzle[idx];
             const mesh = createPieceMesh(pieceCoords, PIECE_COLORS[idx]);
-
-            // Calculate center of mass to orbit around it cleanly
             let cx = 0, cy = 0, cz = 0;
             pieceCoords.forEach(p => { cx += p.x; cy += p.y; cz += p.z; });
             cx /= pieceCoords.length; cy /= pieceCoords.length; cz /= pieceCoords.length;
-
-            // Shift children so pivot is at center
-            mesh.children.forEach(c => {
-                c.position.sub(new THREE.Vector3(cx, cy, cz));
-            });
-
+            mesh.children.forEach(c => c.position.sub(new THREE.Vector3(cx, cy, cz)));
             leftSceneData.scene.add(mesh);
-            
-            // Reset camera to isometric view
             leftSceneData.camera.position.set(5, 5, 5);
             leftSceneData.controls.target.set(0, 0, 0);
             leftSceneData.controls.update();
         }
 
         function renderAssembly() {
-            // Clear right viewer
-            while(rightSceneData.scene.children.length > 3) {
+            while (rightSceneData.scene.children.length > 3)
                 rightSceneData.scene.remove(rightSceneData.scene.children[rightSceneData.scene.children.length - 1]);
-            }
-
             rightPieceGroups = [];
             ui.explodeSlider.value = 0;
-
             currentPuzzle.forEach((pieceCoords, idx) => {
                 const group = createPieceMesh(pieceCoords, PIECE_COLORS[idx]);
-                
-                // Shift the whole puzzle so its center (1,1,1 in grid) is at origin (0,0,0)
                 group.position.set(-1, -1, -1);
-                
-                // Calculate center of this specific piece relative to the grid center for explosion trajectory
                 let cx = 0, cy = 0, cz = 0;
                 pieceCoords.forEach(p => { cx += p.x; cy += p.y; cz += p.z; });
                 cx /= pieceCoords.length; cy /= pieceCoords.length; cz /= pieceCoords.length;
-                
-                // Store normal vector outward from center
-                const dir = new THREE.Vector3(cx - 1, cy - 1, cz - 1).normalize();
-                
-                // If it's the exact center block, pull it UP
+                const dir = new THREE.Vector3(cx-1, cy-1, cz-1).normalize();
                 if (dir.lengthSq() === 0) dir.set(0, 1, 0);
-
                 group.userData.explodeDir = dir;
-                
                 rightPieceGroups.push(group);
                 rightSceneData.scene.add(group);
             });
-
-            // Reset camera to isometric view
             rightSceneData.camera.position.set(7, 7, 7);
             rightSceneData.controls.target.set(0, 0, 0);
             rightSceneData.controls.update();
         }
 
-        // --- Event Listeners ---
-        
+        // ─── Standard Event Listeners ─────────────────────────────────────────────
         ui.btnStandard5.addEventListener('click', () => generatePuzzle(false, 5));
-        ui.btnTrue3d5.addEventListener('click', () => generatePuzzle(true, 5));
+        ui.btnTrue3d5.addEventListener('click',   () => generatePuzzle(true, 5));
         ui.btnStandard6.addEventListener('click', () => generatePuzzle(false, 6));
-        ui.btnTrue3d6.addEventListener('click', () => generatePuzzle(true, 6));
+        ui.btnTrue3d6.addEventListener('click',   () => generatePuzzle(true, 6));
 
-        ui.autoRotateToggle.addEventListener('change', (e) => {
-            const isAutoRotate = e.target.checked;
-            if (leftSceneData) leftSceneData.controls.autoRotate = isAutoRotate;
-            if (rightSceneData) rightSceneData.controls.autoRotate = isAutoRotate;
+        ui.autoRotateToggle.addEventListener('change', e => {
+            const on = e.target.checked;
+            if (leftSceneData)  leftSceneData.controls.autoRotate  = on;
+            if (rightSceneData) rightSceneData.controls.autoRotate = on;
         });
 
         ui.btnResetView.addEventListener('click', () => {
-            // Smoothly animate both viewers to the isometric origin
-            function smoothReset(sceneData, targetPosArray) {
-                if (!sceneData) return;
-                sceneData.controls.autoRotate = false; // Pause auto-rotate during animation
-                
-                const startPos = sceneData.camera.position.clone();
-                const startTarget = sceneData.controls.target.clone();
-                const endPos = new THREE.Vector3(...targetPosArray);
-                const endTarget = new THREE.Vector3(0, 0, 0);
-
-                const duration = 600; // ms duration for smooth movement
-                const startTime = performance.now();
-
-                function animateReset(time) {
-                    const elapsed = time - startTime;
-                    const t = Math.min(elapsed / duration, 1);
-                    const easeT = 1 - Math.pow(1 - t, 3); // Cubic ease out
-
-                    sceneData.camera.position.lerpVectors(startPos, endPos, easeT);
-                    sceneData.controls.target.lerpVectors(startTarget, endTarget, easeT);
-                    sceneData.controls.update();
-
-                    if (t < 1) {
-                        requestAnimationFrame(animateReset);
-                    } else {
-                        // Restore auto-rotate setting if toggle is on
-                        sceneData.controls.autoRotate = ui.autoRotateToggle.checked;
-                    }
+            function smoothReset(sd, pos) {
+                if (!sd) return;
+                sd.controls.autoRotate = false;
+                const sp = sd.camera.position.clone(), st = sd.controls.target.clone();
+                const ep = new THREE.Vector3(...pos), et = new THREE.Vector3(0,0,0);
+                const dur = 600, t0 = performance.now();
+                function step(now) {
+                    const t = Math.min((now - t0) / dur, 1), e = 1 - Math.pow(1-t, 3);
+                    sd.camera.position.lerpVectors(sp, ep, e);
+                    sd.controls.target.lerpVectors(st, et, e);
+                    sd.controls.update();
+                    if (t < 1) requestAnimationFrame(step);
+                    else sd.controls.autoRotate = ui.autoRotateToggle.checked;
                 }
-                requestAnimationFrame(animateReset);
+                requestAnimationFrame(step);
             }
-
-            smoothReset(leftSceneData, [5, 5, 5]);
-            smoothReset(rightSceneData, [7, 7, 7]);
+            smoothReset(leftSceneData,  [5,5,5]);
+            smoothReset(rightSceneData, [7,7,7]);
         });
 
-        ui.explodeSlider.addEventListener('input', (e) => {
+        ui.explodeSlider.addEventListener('input', e => {
             const val = parseFloat(e.target.value);
-            rightPieceGroups.forEach(group => {
-                const dir = group.userData.explodeDir;
-                // Base position is (-1, -1, -1) to center the 3x3x3 grid around origin
-                group.position.set(
-                    -1 + dir.x * val,
-                    -1 + dir.y * val,
-                    -1 + dir.z * val
-                );
+            rightPieceGroups.forEach(g => {
+                const d = g.userData.explodeDir;
+                g.position.set(-1 + d.x*val, -1 + d.y*val, -1 + d.z*val);
             });
         });
 
-        // Generate an initial random puzzle on load (default to 6 piece standard)
+        // ─── Init ─────────────────────────────────────────────────────────────────
+        renderSaveSlots();
         generatePuzzle(false, 6);
-
     </script>
 </body>
 </html>
-
-
